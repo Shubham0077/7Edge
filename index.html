@@ -13,6 +13,9 @@
     <button onClick="check()">
         Submit
     </button>
+    <button onClick="checkFreq()">
+        Sort By Frequency
+       </button>
     <div id="result">
     </div>
 </body>
@@ -26,6 +29,39 @@
         result.sort();
         document.getElementById("result").innerHTML = JSON.stringify(result);
 
+    }
+
+
+    function checkFreq() {
+
+        let obj = {};
+
+        result.map((item) => {
+
+            if (obj[item] == undefined) {
+                obj[item] = 1;
+            } else {
+                obj[item] = obj[item] + 1;
+            }
+
+        })
+
+        let res = Object.keys(obj).sort(function (a, b) {
+            return obj[a] - obj[b]
+        }).reverse();
+
+        let final = res.map((item) => {
+
+            if (item !== undefined) {
+
+                return item.repeat(obj[item]);
+
+            }
+
+        })
+
+
+        document.getElementById("result").innerHTML = JSON.stringify(final.join("").split(""));
     }
 </script>
 
