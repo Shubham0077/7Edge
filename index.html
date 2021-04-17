@@ -15,7 +15,10 @@
     </button>
     <button onClick="checkFreq()">
         Sort By Frequency
-       </button>
+    </button>
+    <button onClick="Clear()">
+        Clear
+    </button>
     <div id="result">
     </div>
 </body>
@@ -62,6 +65,10 @@
 
 
         document.getElementById("result").innerHTML = JSON.stringify(final.join("").split(""));
+    }
+
+    function Clear() {
+        document.getElementById("result").innerHTML = "";
     }
 </script>
 
