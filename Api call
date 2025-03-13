@@ -1,0 +1,47 @@
+import { useEffect, useState } from "react";
+
+const MyComponent = () => {
+  const [data, setData] = useState(null);
+  const [isPolling, setIsPolling] = useState(true); // Control polling
+
+  const fetchData = async () => {
+    try {
+      const response = await fetch("https://api.example.com/data"); // Replace with your API
+      const result = await response.json();
+      setData(result);
+      console.log("API Response:", result);
+    } catch (error) {
+      console.error("API Error:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!isPolling) return;
+
+    let count = 0;
+    const interval = 1000; // 1 second
+    const duration = 20000; // 20 seconds
+    const maxCount = duration / interval;
+
+    const timer = setInterval(() => {
+      if (count >= maxCount) {
+        clearInterval(timer);
+        setIsPolling(false); // Stop polling after 20 seconds
+        return;
+      }
+      fetchData();
+      count++;
+    }, interval);
+
+    return () => clearInterval(timer); // Cleanup on unmount
+  }, [isPolling]);
+
+  return (
+    <div>
+      <h2>API Data:</h2>
+      <pre>{JSON.stringify(data, null, 2)}</pre>
+    </div>
+  );
+};
+
+export default MyComponent;
