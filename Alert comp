@@ -6,20 +6,22 @@ import Box from "@mui/material/Box";
 const ErrorMessage = ({ onRetry }) => {
   return (
     <Stack sx={{ width: "100%" }} spacing={2}>
-      <Alert severity="error" sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Box>
-          <strong>Payee Name could not be fetched</strong>
-          <br />
-          Alert: Unable to fetch beneficiary bank account name. Please try again later.
+      <Alert severity="error">
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Box>
+            <strong>Payee Name could not be fetched</strong>
+            <br />
+            Alert: Unable to fetch beneficiary bank account name. Please try again later.
+          </Box>
+          <Link
+            component="button"
+            variant="body2"
+            sx={{ fontWeight: "bold", cursor: "pointer", ml: 2 }}
+            onClick={onRetry}
+          >
+            Try Again
+          </Link>
         </Box>
-        <Link
-          component="button"
-          variant="body2"
-          sx={{ fontWeight: "bold", cursor: "pointer", ml: 2 }}
-          onClick={onRetry}
-        >
-          Try Again
-        </Link>
       </Alert>
     </Stack>
   );
