@@ -1,0 +1,25 @@
+import Alert from "@mui/material/Alert";
+import Stack from "@mui/material/Stack";
+import Link from "@mui/material/Link";
+
+const ErrorMessage = ({ onRetry }) => {
+  return (
+    <Stack sx={{ width: "100%" }} spacing={2}>
+      <Alert severity="error">
+        <strong>Payee Name could not be fetched</strong>
+        <br />
+        Alert: Unable to fetch beneficiary bank account name. Please try again later.
+        <Link
+          component="button"
+          variant="body2"
+          sx={{ float: "right", fontWeight: "bold", cursor: "pointer" }}
+          onClick={onRetry} // Attach the onClick handler
+        >
+          Try Again
+        </Link>
+      </Alert>
+    </Stack>
+  );
+};
+
+export default ErrorMessage;
