@@ -1,0 +1,66 @@
+import { useEffect, useState, useRef } from "react";
+
+const POLLING_INTERVAL = 1000; // 1 second
+const POLLING_DURATION = 20000; // 20 seconds
+
+const MyComponent = () => {
+  const [data, setData] = useState<any>(null);
+  const [isPolling, setIsPolling] = useState(true);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null); // Store the timer reference
+
+  const fetchData = async () => {
+    try {
+      const response = await fetch("https://api.example.com/data"); // Replace with actual API
+      const result = await response.json();
+      setData(result);
+      console.log("API Response:", result);
+
+      if (result.success) {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        setIsPolling(false); // Stop polling on success
+      }
+    } catch (error) {
+      console.error("API Error:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!isPolling) return;
+
+    let count = 0;
+    const maxCount = POLLING_DURATION / POLLING_INTERVAL;
+
+    timerRef.current = setInterval(() => {
+      if (count >= maxCount) {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        setIsPolling(false); // Stop polling after the duration
+        return;
+      }
+
+      fetchData();
+      count++;
+    }, POLLING_INTERVAL);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [isPolling]);
+
+  return (
+    <div>
+      <h2>API Data:</h2>
+      <pre>{JSON.stringify(data, null, 2)}</pre>
+    </div>
+  );
+};
+
+export default MyComponent;
