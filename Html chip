@@ -1,0 +1,20 @@
+<Box className={classes.AccountNumberHeader}>
+  <Box className={classes.NomineeColumnBox}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: '8px' }}> 
+      <Typography className={classes.AccountNumber}>
+        {item?.accountNumber?.replace(FourDigitSpace, Space)}
+      </Typography>
+      <Chip label={getLabel(item?.accountNumber, customerData)} />
+    </Box>
+    <Typography className={classes.AccountNumberText}>
+      {locale?.ACCOUNT_NUMBER_NOMINEE}
+    </Typography>
+  </Box>
+  <Box className={classes.AddNomineeXL}>
+    <PrimaryButton testid="btn" onClick={() => { 
+      // ... your onClick logic
+    }}>
+      {/* ... */}
+    </PrimaryButton>
+  </Box>
+</Box>
