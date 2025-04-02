@@ -18,3 +18,7 @@
     </PrimaryButton>
   </Box>
 </Box>
+
+const generateOtpObj = useMemo(() => {
+  return useSelector((state: PaymentType) => state?.payment?.generateOtpObj);
+}, []);
