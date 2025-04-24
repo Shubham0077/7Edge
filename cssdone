@@ -1,0 +1,163 @@
+<Grid
+              container
+              direction="row"
+              xs={12}
+              spacing={2}
+              justifyContent="stretch"
+              alignItems="stretch"
+            >
+              {/* Left Grid */}
+              <Grid container item xs={12} sm={12} md={4} lg={4} xl={4} zeroMinWidth spacing={2}>
+                {/* Top Grid */}
+                <Grid item xs={12}>
+                  {/* My Billers Body */}
+                  <Box className={styles.LandingPageLeftTopCard}>
+                    {/* My Billers Header */}
+                    {!isMyBillersLoading && !myBillersError && myBillers?.length > 0 && (
+                      <Box>
+                        <Box className={styles.SecondaryHeaderContainer}>
+                          <Typography className={styles.SecondaryHeader}>
+                            {locale?.MY_BILLERS}
+                          </Typography>
+                          {CheckMOPAccess({
+                            JourneyCode: BILLPAYCONSTANTS?.BILLER_MANAGEMENT_ADD_DELETE,
+                            accessType: accessTypeLocal ?? '',
+                            ViewJourneyCodes: viewJourneCodeLocal,
+                          }) && (
+                            <Typography
+                              className={styles.UnderlinedText}
+                              onClick={redirectToAddNewBiller}
+                            >
+                              {locale?.ADD_NEW_BILLER}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Grid
+                          container
+                          xs={12}
+                          spacing={1}
+                          sx={{
+                            '&.MuiGrid-root': {
+                              display: 'flex',
+                              flexDirection: 'row',
+                              alignItems: 'flex-start',
+                            },
+                          }}
+                        >
+                          {myBillers?.slice(0, 5)?.map((item: any, index: number) => {
+                            return (
+                              <Grid item xs={4} key={index?.toString()}>
+                                <MyBillerDetails
+                                  biller={item}
+                                  handleClickBiller={handleClickBiller}
+                                />
+                              </Grid>
+                            );
+                          })}
+                          <Grid item xs={4}>
+                            <Box
+                              className={styles.BillerContainer}
+                              onClick={handleAddBillersButton}
+                            >
+                              <img src={PAYMENT_APP.MORE} alt="more" />
+                              <Typography className={styles.MyBillersId}>
+                                {locale?.VIEW_ALL}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        </Grid>
+                      </Box>
+                    )}
+                    {isMyBillersLoading && (
+                      <Box className={styles.Loader}>
+                        <Loader />
+                      </Box>
+                    )}
+                    {myBillersError && (
+                      <Box className={styles.ErrorContainer}>
+                        <img
+                          className={styles.MyBillersImage}
+                          src={PAYMENT_APP.MY_BILLERS}
+                          alt="no-bills"
+                        />
+                        <Typography className={styles.ErrorHeader}>{locale?.MY_BILLERS}</Typography>
+                        <Typography className={styles.ErrorSubHeader}>
+                          {locale?.ADD_BILLERS_TO_VIEW_THEM_HERE}
+                        </Typography>
+                        {CheckMOPAccess({
+                          JourneyCode: BILLPAYCONSTANTS?.BILLER_MANAGEMENT_ADD_DELETE,
+                          accessType: accessTypeLocal ?? '',
+                          ViewJourneyCodes: viewJourneCodeLocal,
+                        }) && (
+                          <Button
+                            variant="outlined"
+                            className={styles.ErrorButton}
+                            onClick={redirectToAddNewBiller}
+                            fullWidth
+                          >
+                            {ADD_BILLERSS}
+                          </Button>
+                        )}
+                      </Box>
+                    )}
+                  </Box>
+                </Grid>
+                {/* Bottom Grid */}
+                <Grid item xs={12}>
+                  <Box className={styles.LandingPageLeftBottomCard}>
+                    <Box>
+                      <Box className={styles.SecondaryHeaderContainer}>
+                        <Typography className={styles.SecondaryHeader}>
+                          {locale?.POPULAR_CATEGORIES}
+                        </Typography>
+                      </Box>
+                      <Grid
+                        container
+                        xs={12}
+                        spacing={1}
+                        justifyContent="space-between"
+                        alignItems="flex-start"
+                      >
+                        {popularsBillers?.map((item: any, index: number) => {
+                          return (
+                            <Grid item xs={4} key={index?.toString()}>
+                              <Box
+                                className={styles.BillerContainer}
+                                onClick={() => handleClickCategory(item)}
+                              >
+                                <Image
+                                  src={item.iconUrl}
+                                  alt={item.iconName}
+                                  width={48}
+                                  height={48}
+                                  style={{ borderRadius: 20 }}
+                                />
+                                <Typography className={styles.MyBillersId}>
+                                  {item.parameter_name}
+                                </Typography>
+                              </Box>
+                            </Grid>
+                          );
+                        })}
+                        <Grid item xs={4} alignSelf="flex-end">
+                          <Box className={styles.BillerContainer} onClick={toggleDrawer(true)}>
+                            <img src={PAYMENT_APP.MORE} alt="more" />
+                            <Typography className={styles.MyBillersId}>View All</Typography>
+                          </Box>
+                        </Grid>
+                      </Grid>
+                    </Box>
+                  </Box>
+                </Grid>
+              </Grid>
+              {/* Right Grid */}
+              <Grid item xs={} zeroMinWidth>
+                <img alt="bharat bill pay" src={PAYMENT_APP.BANNER} />
+              </Grid>
+
+              <Grid item xs={12} sm={12} md={8} lg={8} xl={8} zeroMinWidth>
+                <Box className={styles.LandingPageRightCard}>
+                  <AllPayments />
+                </Box>
+              </Grid>
+            </Grid>
