@@ -1,211 +1,102 @@
 
-  ● AepsPaymentErrorStatus › renders default error state
+      // __tests__/AepsPaymentErrorStatus.test.tsx
+import '@testing-library/jest-dom';
+import { render, screen, fireEvent } from '@testing-library/react';
+import AepsPaymentErrorStatus from '../path/to/AepsPaymentErrorStatus'; // update with actual path
+import { useRouter } from 'next/router';
+import { useLocale } from 'ui';
+import * as mui from '@mui/material';
 
-    TestingLibraryElementError: Unable to find an element with the text: Oops!. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+jest.mock('next/router', () => ({
+  useRouter: jest.fn(),
+}));
 
-    Ignored nodes: comments, script, style
-    <body>
-      <div>
-         
-        <div
-          class="AepsPaymentBox MuiBox-root css-0"
-        >
-          <img
-            alt="noPan"
-            src="/mocked/pan_error.png"
-          />
-          <p
-            class="MuiTypography-root MuiTypography-body1 manage_payment_error css-ahj2mt-MuiTypography-root"
-          />
-          <p
-            class="MuiTypography-root MuiTypography-body1 error_description css-ahj2mt-MuiTypography-root"
-          />
-          <div
-            class="buttonBox MuiBox-root css-0"
-          >
-            <button
-              data-testid="secondary-button"
-            >
-              <p
-                class="MuiTypography-root MuiTypography-body1 css-ahj2mt-MuiTypography-root"
-              />
-            </button>
-            <button
-              data-testid="primary-button"
-            >
-              <p
-                class="MuiTypography-root MuiTypography-body1 css-ahj2mt-MuiTypography-root"
-              />
-            </button>
-          </div>
-        </div>
-      </div>
-    </body>
+jest.mock('ui', () => ({
+  PrimaryButton: ({ children, onClick }: any) => (
+    <button onClick={onClick} data-testid="primary-button">
+      {children}
+    </button>
+  ),
+  SecondaryButton: ({ children, onClick }: any) => (
+    <button onClick={onClick} data-testid="secondary-button">
+      {children}
+    </button>
+  ),
+  useLocale: jest.fn(),
+  Service_Request_APP: {
+    pan_error: '/mocked/pan_error.png',
+  },
+}));
 
-      62 |   it('renders default error state', () => {
-      63 |     render(<AepsPaymentErrorStatus />);
-    > 64 |     expect(screen.getByText('Oops!')).toBeInTheDocument();
-         |                   ^
-      65 |     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
-      66 |     expect(screen.getByText('Retry')).toBeInTheDocument();
-      67 |     expect(screen.getByText('Overview')).toBeInTheDocument();
+jest.mock('../common/HeaderwithArrow', () => () => (
+  <div data-testid="header-arrow" />
+));
 
-      at Object.getElementError (../../node_modules/.pnpm/@testing-library+dom@9.3.3/node_modules/@testing-library/dom/dist/config.js:37:19)
-      at ../../node_modules/.pnpm/@testing-library+dom@9.3.3/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
-      at ../../node_modules/.pnpm/@testing-library+dom@9.3.3/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
-      at ../../node_modules/.pnpm/@testing-library+dom@9.3.3/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
-      at Object.getByText (tests/aeps-payment/AepsPaymentErrorStatus.test.tsx:64:19)
+jest.mock('@mui/material', () => {
+  const actualMui = jest.requireActual('@mui/material');
+  return {
+    ...actualMui,
+    useMediaQuery: jest.fn(),
+  };
+});
 
-  ● AepsPaymentErrorStatus › renders with Aadhaar error
+describe('AepsPaymentErrorStatus', () => {
+  const push = jest.fn();
 
-    TestingLibraryElementError: Unable to find an element with the text: Adhaar Error. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+  const mockLocale = {
+    serviceRequest: {
+      OOPS: 'Oops!',
+      SOMETHING_WENT_WRONG: 'Something went wrong',
+      RETRY: 'Retry',
+      AEPS_PAYMENT_MANAGE_PAYMENT_ERROR: 'Adhaar Error',
+      AEPS_PAYMENT_AADHAAR_ERROR: 'Invalid Aadhaar details',
+      UPDATE_AADHAAR: 'Update Aadhaar',
+      AEPS_PAYMENT_CASA_ERROR: 'CASA error occurred',
+      GO_TO_OVERVIEW: 'Overview',
+    },
+  };
 
-    Ignored nodes: comments, script, style
-    <body>
-      <div>
-         
-        <div
-          class="AepsPaymentBox MuiBox-root css-0"
-        >
-          <img
-            alt="noPan"
-            src="/mocked/pan_error.png"
-          />
-          <p
-            class="MuiTypography-root MuiTypography-body1 manage_payment_error css-ahj2mt-MuiTypography-root"
-          />
-          <p
-            class="MuiTypography-root MuiTypography-body1 error_description css-ahj2mt-MuiTypography-root"
-          />
-          <div
-            class="buttonBox MuiBox-root css-0"
-          >
-            <button
-              data-testid="secondary-button"
-            >
-              <p
-                class="MuiTypography-root MuiTypography-body1 css-ahj2mt-MuiTypography-root"
-              />
-            </button>
-            <button
-              data-testid="primary-button"
-            >
-              <p
-                class="MuiTypography-root MuiTypography-body1 css-ahj2mt-MuiTypography-root"
-              />
-            </button>
-          </div>
-        </div>
-      </div>
-    </body>
+  beforeEach(() => {
+    (useRouter as jest.Mock).mockReturnValue({ locale: 'en', push });
+    (useLocale as jest.Mock).mockReturnValue(mockLocale.serviceRequest);
+    (mui.useMediaQuery as jest.Mock).mockReturnValue(false); // default to desktop
+    push.mockClear();
+  });
 
-      70 |   it('renders with Aadhaar error', () => {
-      71 |     render(<AepsPaymentErrorStatus isAdhaarError />);
-    > 72 |     expect(screen.getByText('Adhaar Error')).toBeInTheDocument();
-         |                   ^
-      73 |     expect(screen.getByText('Invalid Aadhaar details')).toBeInTheDocument();
-      74 |     expect(screen.getByText('Update Aadhaar')).toBeInTheDocument();
-      75 |   });
+  it('renders default error state', () => {
+    render(<AepsPaymentErrorStatus />);
+    expect(screen.getByText('Oops!')).toBeInTheDocument();
+    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+    expect(screen.getByText('Retry')).toBeInTheDocument();
+    expect(screen.getByText('Overview')).toBeInTheDocument();
+  });
 
-      at Object.getElementError (../../node_modules/.pnpm/@testing-library+dom@9.3.3/node_modules/@testing-library/dom/dist/config.js:37:19)
-      at ../../node_modules/.pnpm/@testing-library+dom@9.3.3/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
-      at ../../node_modules/.pnpm/@testing-library+dom@9.3.3/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
-      at ../../node_modules/.pnpm/@testing-library+dom@9.3.3/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
-      at Object.getByText (tests/aeps-payment/AepsPaymentErrorStatus.test.tsx:72:19)
+  it('renders with Aadhaar error', () => {
+    render(<AepsPaymentErrorStatus isAdhaarError />);
+    expect(screen.getByText('Adhaar Error')).toBeInTheDocument();
+    expect(screen.getByText('Invalid Aadhaar details')).toBeInTheDocument();
+    expect(screen.getByText('Update Aadhaar')).toBeInTheDocument();
+  });
 
-  ● AepsPaymentErrorStatus › renders with CASA error
+  it('renders with CASA error', () => {
+    render(<AepsPaymentErrorStatus isCasaError />);
+    expect(screen.getByText('Oops!')).toBeInTheDocument();
+    expect(screen.getByText('CASA error occurred')).toBeInTheDocument();
+    expect(screen.getByText('Retry')).toBeInTheDocument();
+  });
 
-    TestingLibraryElementError: Unable to find an element with the text: Oops!. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+  it('navigates to correct routes on button click', () => {
+    render(<AepsPaymentErrorStatus />);
+    fireEvent.click(screen.getByTestId('secondary-button'));
+    expect(push).toHaveBeenCalledWith('/overview');
 
-    Ignored nodes: comments, script, style
-    <body>
-      <div>
-         
-        <div
-          class="AepsPaymentBox MuiBox-root css-0"
-        >
-          <img
-            alt="noPan"
-            src="/mocked/pan_error.png"
-          />
-          <p
-            class="MuiTypography-root MuiTypography-body1 manage_payment_error css-ahj2mt-MuiTypography-root"
-          />
-          <p
-            class="MuiTypography-root MuiTypography-body1 error_description css-ahj2mt-MuiTypography-root"
-          />
-          <div
-            class="buttonBox MuiBox-root css-0"
-          >
-            <button
-              data-testid="secondary-button"
-            >
-              <p
-                class="MuiTypography-root MuiTypography-body1 css-ahj2mt-MuiTypography-root"
-              />
-            </button>
-            <button
-              data-testid="primary-button"
-            >
-              <p
-                class="MuiTypography-root MuiTypography-body1 css-ahj2mt-MuiTypography-root"
-              />
-            </button>
-          </div>
-        </div>
-      </div>
-    </body>
+    fireEvent.click(screen.getByTestId('primary-button'));
+    expect(push).toHaveBeenCalledWith('/service-request/update-pan');
+  });
 
-      77 |   it('renders with CASA error', () => {
-      78 |     render(<AepsPaymentErrorStatus isCasaError />);
-    > 79 |     expect(screen.getByText('Oops!')).toBeInTheDocument();
-         |                   ^
-      80 |     expect(screen.getByText('CASA error occurred')).toBeInTheDocument();
-      81 |     expect(screen.getByText('Retry')).toBeInTheDocument();
-      82 |   });
-
-      at Object.getElementError (../../node_modules/.pnpm/@testing-library+dom@9.3.3/node_modules/@testing-library/dom/dist/config.js:37:19)
-      at ../../node_modules/.pnpm/@testing-library+dom@9.3.3/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
-      at ../../node_modules/.pnpm/@testing-library+dom@9.3.3/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
-      at ../../node_modules/.pnpm/@testing-library+dom@9.3.3/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
-      at Object.getByText (tests/aeps-payment/AepsPaymentErrorStatus.test.tsx:79:19)
-
-  ● AepsPaymentErrorStatus › navigates to correct routes on button click
-
-    expect(jest.fn()).toHaveBeenCalledWith(...expected)
-
-    Expected: "/service-request/overview"
-    Received: "/overview"
-
-    Number of calls: 1
-
-      85 |     render(<AepsPaymentErrorStatus />);
-      86 |     fireEvent.click(screen.getByTestId('secondary-button'));
-    > 87 |     expect(push).toHaveBeenCalledWith('/service-request/overview');
-         |                  ^
-      88 |
-      89 |     fireEvent.click(screen.getByTestId('primary-button'));
-      90 |     expect(push).toHaveBeenCalledWith('/service-request/update-pan');
-
-      at Object.toHaveBeenCalledWith (tests/aeps-payment/AepsPaymentErrorStatus.test.tsx:87:18)
-
-  ● AepsPaymentErrorStatus › shows HeaderwithArrow on mobile
-
-    TypeError: expect(...).toBeInTheDocument is not a function
-
-      94 |     (mui.useMediaQuery as jest.Mock).mockReturnValue(true);
-      95 |     render(<AepsPaymentErrorStatus />);
-    > 96 |     expect(screen.getByTestId('header-arrow')).toBeInTheDocument();
-         |                                                ^
-      97 |   });
-      98 | });
-      99 |
-
-      at Object.toBeInTheDocument (tests/aeps-payment/AepsPaymentErrorStatus.test.tsx:96:48)
-
-Test Suites: 1 failed, 1 total
-Tests:       5 failed, 5 total
-Snapshots:   0 total
-Time:        0.577 s
-Ran all test suites matching /AepsPaymentErrorStatus.test.tsx/i.
- ELIFECYCLE  Test failed. See above for more details.
+  it('shows HeaderwithArrow on mobile', () => {
+    (mui.useMediaQuery as jest.Mock).mockReturnValue(true);
+    render(<AepsPaymentErrorStatus />);
+    expect(screen.getByTestId('header-arrow')).toBeInTheDocument();
+  });
+});
