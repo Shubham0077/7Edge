@@ -1,87 +1,93 @@
-// __tests__/AepsPaymentErrorStatus.test.tsx
-import { render, screen, fireEvent } from '@testing-library/react';
-import AepsPaymentErrorStatus from '../path/to/AepsPaymentErrorStatus';
-import { useRouter } from 'next/router';
-import { useLocale } from 'ui';
-import * as mui from '@mui/material';
+  AepsPaymentErrorStatus
+    ✕ renders default error state
+    ✕ renders with Aadhaar error
+    ✕ renders with CASA error
+    ✕ navigates to correct routes on button click
+    ✕ shows HeaderwithArrow on mobile
 
-jest.mock('next/router', () => ({
-  useRouter: jest.fn(),
-}));
+  ● AepsPaymentErrorStatus › renders default error state
 
-jest.mock('ui', () => ({
-  PrimaryButton: ({ children, onClick }: any) => (
-    <button onClick={onClick} data-testid="primary-button">
-      {children}
-    </button>
-  ),
-  SecondaryButton: ({ children, onClick }: any) => (
-    <button onClick={onClick} data-testid="secondary-button">
-      {children}
-    </button>
-  ),
-  useLocale: jest.fn(),
-  Service_Request_APP: { pan_error: '/mocked/pan_error.png' },
-}));
+    TypeError: Cannot redefine property: useMediaQuery
+        at Function.defineProperty (<anonymous>)
 
-jest.mock('../common/HeaderwithArrow', () => () => <div data-testid="header-arrow" />);
+      52 |     (useRouter as jest.Mock).mockReturnValue({ locale: 'en', push });
+      53 |     (useLocale as jest.Mock).mockReturnValue(mockLocale.serviceRequest);
+    > 54 |     jest.spyOn(mui, 'useMediaQuery').mockReturnValue(false); // Default to desktop
+         |          ^
+      55 |   });
+      56 |
+      57 |   it('renders default error state', () => {
 
-describe('AepsPaymentErrorStatus', () => {
-  const push = jest.fn();
+      at ModuleMocker.spyOn (../../node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:776:16)
+      at Object.spyOn (tests/aeps-payment/AepsPaymentErrorStatus.test.tsx:54:10)
 
-  const mockLocale = {
-    serviceRequest: {
-      OOPS: 'Oops!',
-      SOMETHING_WENT_WRONG: 'Something went wrong',
-      RETRY: 'Retry',
-      AEPS_PAYMENT_MANAGE_PAYMENT_ERROR: 'Adhaar Error',
-      AEPS_PAYMENT_AADHAAR_ERROR: 'Invalid Aadhaar details',
-      UPDATE_AADHAAR: 'Update Aadhaar',
-      AEPS_PAYMENT_CASA_ERROR: 'CASA error occurred',
-      GO_TO_OVERVIEW: 'Overview',
-    },
-  };
+  ● AepsPaymentErrorStatus › renders with Aadhaar error
 
-  beforeEach(() => {
-    (useRouter as jest.Mock).mockReturnValue({ locale: 'en', push });
-    (useLocale as jest.Mock).mockReturnValue(mockLocale.serviceRequest);
-    jest.spyOn(mui, 'useMediaQuery').mockReturnValue(false); // Default to desktop
-  });
+    TypeError: Cannot redefine property: useMediaQuery
+        at Function.defineProperty (<anonymous>)
 
-  it('renders default error state', () => {
-    render(<AepsPaymentErrorStatus />);
-    expect(screen.getByText('Oops!')).toBeInTheDocument();
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
-    expect(screen.getByText('Retry')).toBeInTheDocument();
-    expect(screen.getByText('Overview')).toBeInTheDocument();
-  });
+      52 |     (useRouter as jest.Mock).mockReturnValue({ locale: 'en', push });
+      53 |     (useLocale as jest.Mock).mockReturnValue(mockLocale.serviceRequest);
+    > 54 |     jest.spyOn(mui, 'useMediaQuery').mockReturnValue(false); // Default to desktop
+         |          ^
+      55 |   });
+      56 |
+      57 |   it('renders default error state', () => {
 
-  it('renders with Aadhaar error', () => {
-    render(<AepsPaymentErrorStatus isAdhaarError />);
-    expect(screen.getByText('Adhaar Error')).toBeInTheDocument();
-    expect(screen.getByText('Invalid Aadhaar details')).toBeInTheDocument();
-    expect(screen.getByText('Update Aadhaar')).toBeInTheDocument();
-  });
+      at ModuleMocker.spyOn (../../node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:776:16)
+      at Object.spyOn (tests/aeps-payment/AepsPaymentErrorStatus.test.tsx:54:10)
 
-  it('renders with CASA error', () => {
-    render(<AepsPaymentErrorStatus isCasaError />);
-    expect(screen.getByText('Oops!')).toBeInTheDocument();
-    expect(screen.getByText('CASA error occurred')).toBeInTheDocument();
-    expect(screen.getByText('Retry')).toBeInTheDocument();
-  });
+  ● AepsPaymentErrorStatus › renders with CASA error
 
-  it('navigates to correct routes on button click', () => {
-    render(<AepsPaymentErrorStatus />);
-    fireEvent.click(screen.getByTestId('secondary-button'));
-    expect(push).toHaveBeenCalledWith('/service-request/overview');
+    TypeError: Cannot redefine property: useMediaQuery
+        at Function.defineProperty (<anonymous>)
 
-    fireEvent.click(screen.getByTestId('primary-button'));
-    expect(push).toHaveBeenCalledWith('/service-request/update-pan');
-  });
+      52 |     (useRouter as jest.Mock).mockReturnValue({ locale: 'en', push });
+      53 |     (useLocale as jest.Mock).mockReturnValue(mockLocale.serviceRequest);
+    > 54 |     jest.spyOn(mui, 'useMediaQuery').mockReturnValue(false); // Default to desktop
+         |          ^
+      55 |   });
+      56 |
+      57 |   it('renders default error state', () => {
 
-  it('shows HeaderwithArrow on mobile', () => {
-    jest.spyOn(mui, 'useMediaQuery').mockReturnValue(true);
-    render(<AepsPaymentErrorStatus />);
-    expect(screen.getByTestId('header-arrow')).toBeInTheDocument();
-  });
-});
+      at ModuleMocker.spyOn (../../node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:776:16)
+      at Object.spyOn (tests/aeps-payment/AepsPaymentErrorStatus.test.tsx:54:10)
+
+  ● AepsPaymentErrorStatus › navigates to correct routes on button click
+
+    TypeError: Cannot redefine property: useMediaQuery
+        at Function.defineProperty (<anonymous>)
+
+      52 |     (useRouter as jest.Mock).mockReturnValue({ locale: 'en', push });
+      53 |     (useLocale as jest.Mock).mockReturnValue(mockLocale.serviceRequest);
+    > 54 |     jest.spyOn(mui, 'useMediaQuery').mockReturnValue(false); // Default to desktop
+         |          ^
+      55 |   });
+      56 |
+      57 |   it('renders default error state', () => {
+
+      at ModuleMocker.spyOn (../../node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:776:16)
+      at Object.spyOn (tests/aeps-payment/AepsPaymentErrorStatus.test.tsx:54:10)
+
+  ● AepsPaymentErrorStatus › shows HeaderwithArrow on mobile
+
+    TypeError: Cannot redefine property: useMediaQuery
+        at Function.defineProperty (<anonymous>)
+
+      52 |     (useRouter as jest.Mock).mockReturnValue({ locale: 'en', push });
+      53 |     (useLocale as jest.Mock).mockReturnValue(mockLocale.serviceRequest);
+    > 54 |     jest.spyOn(mui, 'useMediaQuery').mockReturnValue(false); // Default to desktop
+         |          ^
+      55 |   });
+      56 |
+      57 |   it('renders default error state', () => {
+
+      at ModuleMocker.spyOn (../../node_modules/.pnpm/jest-mock@29.7.0/node_modules/jest-mock/build/index.js:776:16)
+      at Object.spyOn (tests/aeps-payment/AepsPaymentErrorStatus.test.tsx:54:10)
+
+Test Suites: 1 failed, 1 total
+Tests:       5 failed, 5 total
+Snapshots:   0 total
+Time:        0.628 s, estimated 1 s
+Ran all test suites matching /AepsPaymentErrorStatus.test.tsx/i.
+ ELIFECYCLE  Test failed. See above for more details.
