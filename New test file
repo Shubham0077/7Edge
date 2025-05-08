@@ -1,0 +1,99 @@
+import '@testing-library/jest-dom';
+import { render, screen, fireEvent } from '@testing-library/react';
+import AepsPaymentErrorStatus from '../path/to/AepsPaymentErrorStatus'; // update the import
+import { useRouter } from 'next/router';
+import { useLocale } from 'ui';
+import * as mui from '@mui/material';
+
+jest.mock('next/router', () => ({
+  useRouter: jest.fn(),
+}));
+
+jest.mock('ui', () => ({
+  PrimaryButton: ({ children, onClick }: any) => (
+    <button onClick={onClick} data-testid="primary-button">{children}</button>
+  ),
+  SecondaryButton: ({ children, onClick }: any) => (
+    <button onClick={onClick} data-testid="secondary-button">{children}</button>
+  ),
+  useLocale: jest.fn(),
+  Service_Request_APP: {
+    pan_error: '/mocked/pan_error.png',
+  },
+}));
+
+jest.mock('../common/HeaderwithArrow', () => () => (
+  <div data-testid="header-arrow" />
+));
+
+jest.mock('@mui/material', () => {
+  const actualMui = jest.requireActual('@mui/material');
+  return {
+    ...actualMui,
+    useMediaQuery: jest.fn(),
+  };
+});
+
+describe('AepsPaymentErrorStatus', () => {
+  const push = jest.fn();
+
+  const mockLocale = {
+    serviceRequest: {
+      OOPS: 'Oops!',
+      SOMETHING_WENT_WRONG: 'Something went wrong',
+      RETRY: 'Retry',
+      AEPS_PAYMENT_MANAGE_PAYMENT_ERROR: 'Adhaar Error',
+      AEPS_PAYMENT_AADHAAR_ERROR: 'Invalid Aadhaar details',
+      UPDATE_AADHAAR: 'Update Aadhaar',
+      AEPS_PAYMENT_CASA_ERROR: 'CASA error occurred',
+      GO_TO_OVERVIEW: 'Overview',
+    },
+  };
+
+  beforeEach(() => {
+    (useRouter as jest.Mock).mockReturnValue({ locale: 'en', push });
+    (useLocale as jest.Mock).mockReturnValue(mockLocale.serviceRequest);
+    (mui.useMediaQuery as jest.Mock).mockReturnValue(false);
+    push.mockClear();
+  });
+
+  it('renders default error state structure', () => {
+    render(<AepsPaymentErrorStatus />);
+    expect(screen.getByAltText('noPan')).toBeInTheDocument();
+    expect(screen.getByTestId('primary-button')).toBeInTheDocument();
+    expect(screen.getByTestId('secondary-button')).toBeInTheDocument();
+    expect(document.querySelector(`.${'manage_payment_error'}`)).toBeInTheDocument();
+    expect(document.querySelector(`.${'error_description'}`)).toBeInTheDocument();
+  });
+
+  it('renders Aadhaar error structure', () => {
+    render(<AepsPaymentErrorStatus isAdhaarError />);
+    expect(screen.getByTestId('primary-button')).toBeInTheDocument();
+    expect(screen.getByTestId('secondary-button')).toBeInTheDocument();
+    expect(document.querySelector(`.${'manage_payment_error'}`)).toBeInTheDocument();
+    expect(document.querySelector(`.${'error_description'}`)).toBeInTheDocument();
+  });
+
+  it('renders CASA error structure', () => {
+    render(<AepsPaymentErrorStatus isCasaError />);
+    expect(screen.getByTestId('primary-button')).toBeInTheDocument();
+    expect(screen.getByTestId('secondary-button')).toBeInTheDocument();
+    expect(document.querySelector(`.${'manage_payment_error'}`)).toBeInTheDocument();
+    expect(document.querySelector(`.${'error_description'}`)).toBeInTheDocument();
+  });
+
+  it('navigates correctly on button clicks', () => {
+    render(<AepsPaymentErrorStatus />);
+    fireEvent.click(screen.getByTestId('secondary-button'));
+    expect(push).toHaveBeenCalledWith('/overview');
+
+    fireEvent.click(screen.getByTestId('primary-button'));
+    expect(push).toHaveBeenCalledWith('/service-request/update-pan');
+  });
+
+  it('shows HeaderwithArrow in mobile view', () => {
+    (mui.useMediaQuery as jest.Mock).mockReturnValue(true);
+    render(<AepsPaymentErrorStatus />);
+    expect(screen.getByTestId('header-arrow')).toBeInTheDocument();
+  });
+});
