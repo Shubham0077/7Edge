@@ -1,0 +1,87 @@
+// __tests__/AepsPaymentErrorStatus.test.tsx
+import { render, screen, fireEvent } from '@testing-library/react';
+import AepsPaymentErrorStatus from '../path/to/AepsPaymentErrorStatus';
+import { useRouter } from 'next/router';
+import { useLocale } from 'ui';
+import * as mui from '@mui/material';
+
+jest.mock('next/router', () => ({
+  useRouter: jest.fn(),
+}));
+
+jest.mock('ui', () => ({
+  PrimaryButton: ({ children, onClick }: any) => (
+    <button onClick={onClick} data-testid="primary-button">
+      {children}
+    </button>
+  ),
+  SecondaryButton: ({ children, onClick }: any) => (
+    <button onClick={onClick} data-testid="secondary-button">
+      {children}
+    </button>
+  ),
+  useLocale: jest.fn(),
+  Service_Request_APP: { pan_error: '/mocked/pan_error.png' },
+}));
+
+jest.mock('../common/HeaderwithArrow', () => () => <div data-testid="header-arrow" />);
+
+describe('AepsPaymentErrorStatus', () => {
+  const push = jest.fn();
+
+  const mockLocale = {
+    serviceRequest: {
+      OOPS: 'Oops!',
+      SOMETHING_WENT_WRONG: 'Something went wrong',
+      RETRY: 'Retry',
+      AEPS_PAYMENT_MANAGE_PAYMENT_ERROR: 'Adhaar Error',
+      AEPS_PAYMENT_AADHAAR_ERROR: 'Invalid Aadhaar details',
+      UPDATE_AADHAAR: 'Update Aadhaar',
+      AEPS_PAYMENT_CASA_ERROR: 'CASA error occurred',
+      GO_TO_OVERVIEW: 'Overview',
+    },
+  };
+
+  beforeEach(() => {
+    (useRouter as jest.Mock).mockReturnValue({ locale: 'en', push });
+    (useLocale as jest.Mock).mockReturnValue(mockLocale.serviceRequest);
+    jest.spyOn(mui, 'useMediaQuery').mockReturnValue(false); // Default to desktop
+  });
+
+  it('renders default error state', () => {
+    render(<AepsPaymentErrorStatus />);
+    expect(screen.getByText('Oops!')).toBeInTheDocument();
+    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+    expect(screen.getByText('Retry')).toBeInTheDocument();
+    expect(screen.getByText('Overview')).toBeInTheDocument();
+  });
+
+  it('renders with Aadhaar error', () => {
+    render(<AepsPaymentErrorStatus isAdhaarError />);
+    expect(screen.getByText('Adhaar Error')).toBeInTheDocument();
+    expect(screen.getByText('Invalid Aadhaar details')).toBeInTheDocument();
+    expect(screen.getByText('Update Aadhaar')).toBeInTheDocument();
+  });
+
+  it('renders with CASA error', () => {
+    render(<AepsPaymentErrorStatus isCasaError />);
+    expect(screen.getByText('Oops!')).toBeInTheDocument();
+    expect(screen.getByText('CASA error occurred')).toBeInTheDocument();
+    expect(screen.getByText('Retry')).toBeInTheDocument();
+  });
+
+  it('navigates to correct routes on button click', () => {
+    render(<AepsPaymentErrorStatus />);
+    fireEvent.click(screen.getByTestId('secondary-button'));
+    expect(push).toHaveBeenCalledWith('/service-request/overview');
+
+    fireEvent.click(screen.getByTestId('primary-button'));
+    expect(push).toHaveBeenCalledWith('/service-request/update-pan');
+  });
+
+  it('shows HeaderwithArrow on mobile', () => {
+    jest.spyOn(mui, 'useMediaQuery').mockReturnValue(true);
+    render(<AepsPaymentErrorStatus />);
+    expect(screen.getByTestId('header-arrow')).toBeInTheDocument();
+  });
+});
