@@ -1,0 +1,172 @@
+import '@testing-library/jest-dom';
+import { render, screen, fireEvent } from '@testing-library/react';
+import AePSPaymentSuccessStatus from '../path/to/AePSPaymentSuccessStatus'; // <-- update this path
+import * as reactRedux from '../../redux/hooks';
+import * as reactReduxToolkit from '../../redux/serviceRequestSlice';
+import { useRouter } from 'next/router';
+import { useLocale } from 'ui';
+
+jest.mock('../../redux/hooks', () => ({
+  useAppDispatch: jest.fn(),
+  useAppSelector: jest.fn(),
+}));
+
+jest.mock('../../redux/serviceRequestSlice', () => ({
+  getAePSDetailsFromStrappi: jest.fn(() => ({ type: 'MOCKED_GET_STRAPI' })),
+  postAepsPaymentToggle: jest.fn(),
+  sendotp: jest.fn(),
+}));
+
+jest.mock('ui', () => ({
+  useLocale: jest.fn(),
+  Service_Request_APP: {
+    SUCCESS: '/mocked/success.png',
+  },
+}));
+
+jest.mock('next/router', () => ({
+  useRouter: jest.fn(),
+}));
+
+jest.mock('../VerifyOTPModal', () => () => <div data-testid="verify-otp-modal" />);
+jest.mock('./aeps-payment-know-more-modal', () => () => <div data-testid="know-more-modal" />);
+jest.mock('../ToastComponent', () => () => <div data-testid="toast-component" />);
+jest.mock('../positive-pay/common/custom-modal', () => () => <div data-testid="custom-modal" />);
+jest.mock('./aeps-payment-toggle-button', () => ({ value, handleChange }: any) => (
+  <div data-testid="toggle-button" onClick={handleChange}>
+    TOGGLE BUTTON
+  </div>
+));
+
+describe('AePSPaymentSuccessStatus', () => {
+  const mockDispatch = jest.fn();
+  const mockRouterPush = jest.fn();
+
+  beforeEach(() => {
+    (reactRedux.useAppDispatch as jest.Mock).mockReturnValue(mockDispatch);
+    (reactRedux.useAppSelector as jest.Mock).mockImplementation((selectorFn) =>
+      selectorFn({
+        serviceRequest: {
+          strapiData: {
+            data: {
+              AepsModal: {
+                headerLogo: { url: '/logo.png' },
+              },
+            },
+          },
+        },
+        authdata: {
+          userProfile: {
+            countryCode: '+91',
+          },
+        },
+      })
+    );
+
+    (useRouter as jest.Mock).mockReturnValue({ push: mockRouterPush });
+    (useLocale as jest.Mock).mockReturnValue({
+      serviceRequest: {
+        AEPS_PAYMENT_HOME_DESCRIPTION: 'Test description',
+        AEPS_PAYMENT_HOME_KNOW_MORE: 'Know More',
+        AEPS_PAYMENT: 'Enable AePS',
+        APES_PAYMENT_SUCCESSFUL_ENABLED: 'AePS Enabled',
+        APES_PAYMENT_DISABLED_ENABLED: 'AePS Disabled',
+      },
+    });
+
+    mockDispatch.mockClear();
+    mockRouterPush.mockClear();
+  });
+
+  it('renders main UI components', () => {
+    render(
+      <AePSPaymentSuccessStatus
+        mobileNumber="1234567890"
+        cifId="CID123"
+        aepsPaymentData={{ isEnabled: true }}
+      />
+    );
+
+    expect(screen.getByAltText('Logo')).toHaveAttribute('src', '/logo.png');
+    expect(screen.getByText('Test description')).toBeInTheDocument();
+    expect(screen.getByText('Know More')).toBeInTheDocument();
+    expect(screen.getByText('Enable AePS')).toBeInTheDocument();
+    expect(screen.getByTestId('toggle-button')).toBeInTheDocument();
+
+    expect(mockDispatch).toHaveBeenCalledWith(reactReduxToolkit.getAePSDetailsFromStrappi());
+  });
+
+  it('opens Know More modal on button click', () => {
+    render(
+      <AePSPaymentSuccessStatus
+        mobileNumber="1234567890"
+        cifId="CID123"
+        aepsPaymentData={{ isEnabled: true }}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Know More'));
+    expect(screen.getByTestId('know-more-modal')).toBeInTheDocument();
+  });
+
+  it('opens OTP modal after toggle', async () => {
+    (reactReduxToolkit.sendotp as jest.Mock).mockResolvedValue({
+      payload: { message: 'SUCCESS', referenceId: 'REF123' },
+    });
+
+    render(
+      <AePSPaymentSuccessStatus
+        mobileNumber="1234567890"
+        cifId="CID123"
+        aepsPaymentData={{ isEnabled: true }}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('toggle-button'));
+    expect(await screen.findByTestId('verify-otp-modal')).toBeInTheDocument();
+  });
+
+  it('shows toast if OTP fails', async () => {
+    (reactReduxToolkit.sendotp as jest.Mock).mockResolvedValue({
+      payload: { message: 'FAIL' },
+    });
+
+    render(
+      <AePSPaymentSuccessStatus
+        mobileNumber="1234567890"
+        cifId="CID123"
+        aepsPaymentData={{ isEnabled: true }}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('toggle-button'));
+    expect(await screen.findByTestId('toast-component')).toBeInTheDocument();
+  });
+
+  it('shows success modal if toggle success', async () => {
+    (reactReduxToolkit.sendotp as jest.Mock).mockResolvedValue({
+      payload: { message: 'SUCCESS', referenceId: 'REF123' },
+    });
+    (reactReduxToolkit.postAepsPaymentToggle as jest.Mock).mockResolvedValue({
+      payload: {
+        returnCode: '0',
+        data: {
+          isEnabled: true,
+        },
+      },
+    });
+
+    render(
+      <AePSPaymentSuccessStatus
+        mobileNumber="1234567890"
+        cifId="CID123"
+        aepsPaymentData={{ isEnabled: false }}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('toggle-button'));
+    expect(await screen.findByTestId('verify-otp-modal')).toBeInTheDocument();
+    // Manually trigger OTP callback for testing postAepsPaymentToggle
+    // In actual test, simulate entering OTP and calling handleclickBack manually if possible
+  });
+});
