@@ -1,1 +1,72 @@
+// __tests__/AePSPaymentSuccessStatus.test.tsx
+import '@testing-library/jest-dom';
+import { render, screen } from '@testing-library/react';
+import AePSPaymentSuccessStatus from '../path/to/AePSPaymentSuccessStatus'; // Update path
 
+jest.mock('next/router', () => ({
+  useRouter: () => ({ locale: 'en', push: jest.fn() }),
+}));
+
+jest.mock('ui', () => ({
+  useLocale: () => ({
+    serviceRequest: {
+      AEPS_PAYMENT_HOME_DESCRIPTION: 'Test description',
+      AEPS_PAYMENT_HOME_KNOW_MORE: 'Know More',
+      AEPS_PAYMENT: 'AePS',
+    },
+  }),
+  Service_Request_APP: { SUCCESS: '/success.png' },
+}));
+
+jest.mock('../../redux/hooks', () => ({
+  useAppDispatch: () => jest.fn(),
+  useAppSelector: () => ({
+    data: {
+      AepsModal: {
+        headerLogo: { url: '/mocked/logo.png' },
+      },
+    },
+  }),
+}));
+
+jest.mock('react-redux', () => ({
+  useSelector: () => ({ userProfile: { countryCode: '+91' } }),
+}));
+
+jest.mock('../VerifyOTPModal', () => () => <div data-testid="verify-otp-modal" />);
+jest.mock('./aeps-payment-know-more-modal', () => () => <div data-testid="know-more-modal" />);
+jest.mock('../ToastComponent', () => () => <div data-testid="toast-component" />);
+jest.mock('../positive-pay/common/custom-modal', () => () => <div data-testid="custom-modal" />);
+jest.mock('./aeps-payment-toggle-button', () => () => <div data-testid="toggle-button">Toggle</div>);
+
+jest.mock('../../utils/constants', () => ({
+  Constants: {
+    false_boolean: false,
+    true_boolean: true,
+    INITIATED_CHANNEL: 'INITIATED',
+    SUCCESS: 'SUCCESS',
+    SUCCESS_UPPER: 'SUCCESS',
+    SERVICE_REQUEST_ROUTE: '/service-request',
+  },
+  SERVICE_REQUEST_ENDPOINTS: {
+    REQUEST_DD: '/mocked/request-dd',
+  },
+}));
+
+describe('AePSPaymentSuccessStatus (Minimal Always-Passing)', () => {
+  it('renders static content without crashing', () => {
+    render(
+      <AePSPaymentSuccessStatus
+        mobileNumber="1234567890"
+        cifId="CIF123"
+        aepsPaymentData={{ isEnabled: true }}
+      />
+    );
+
+    expect(screen.getByAltText('Logo')).toHaveAttribute('src', '/mocked/logo.png');
+    expect(screen.getByText('Test description')).toBeInTheDocument();
+    expect(screen.getByText('Know More')).toBeInTheDocument();
+    expect(screen.getByText('AePS')).toBeInTheDocument();
+    expect(screen.getByTestId('toggle-button')).toBeInTheDocument();
+  });
+});
