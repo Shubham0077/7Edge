@@ -1,0 +1,90 @@
+import '@testing-library/jest-dom';
+import { render, screen, fireEvent } from '@testing-library/react';
+import AepsPaymentKnowMoreModal from '../path/to/AepsPaymentKnowMoreModal'; // update actual path
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { getAePSDetailsFromStrappi } from '../../redux/serviceRequestSlice';
+
+jest.mock('../../redux/hooks', () => ({
+  useAppDispatch: jest.fn(),
+  useAppSelector: jest.fn(),
+}));
+
+jest.mock('../../redux/serviceRequestSlice', () => ({
+  getAePSDetailsFromStrappi: jest.fn(() => ({ type: 'GET_STRAPI' })),
+}));
+
+describe('AepsPaymentKnowMoreModal', () => {
+  const mockDispatch = jest.fn();
+
+  const mockStrapiData = {
+    data: {
+      AepsModal: {
+        headerLogo: {
+          url: '/mocked/logo.png',
+        },
+        headerTitle: 'Mocked Header Title',
+        headerSubtitle: 'Mocked Subtitle',
+        benefitsHeading: 'Mocked Benefits Heading',
+        benefits: [
+          {
+            id: 1,
+            title: 'Mocked Benefit 1',
+            icon: {
+              url: '/mocked/benefit1.png',
+              width: 20,
+              height: 20,
+            },
+          },
+          {
+            id: 2,
+            title: 'Mocked Benefit 2',
+            icon: {
+              url: '/mocked/benefit2.png',
+              width: 20,
+              height: 20,
+            },
+          },
+        ],
+        footerDescription: 'Mocked Footer Description',
+      },
+    },
+  };
+
+  beforeEach(() => {
+    (useAppDispatch as jest.Mock).mockReturnValue(mockDispatch);
+    (useAppSelector as jest.Mock).mockImplementation((selectorFn) =>
+      selectorFn({ serviceRequest: { strapiData: mockStrapiData } })
+    );
+    mockDispatch.mockClear();
+  });
+
+  it('renders modal with provided strapi data when open is true', () => {
+    render(<AepsPaymentKnowMoreModal open={true} handleClose={jest.fn()} />);
+
+    expect(screen.getByAltText('AePS Payment Logo')).toHaveAttribute('src', '/mocked/logo.png');
+    expect(screen.getByText('Mocked Header Title')).toBeInTheDocument();
+    expect(screen.getByText('Mocked Subtitle')).toBeInTheDocument();
+    expect(screen.getByText('Mocked Benefits Heading')).toBeInTheDocument();
+    expect(screen.getByText('Mocked Benefit 1')).toBeInTheDocument();
+    expect(screen.getByText('Mocked Benefit 2')).toBeInTheDocument();
+    expect(screen.getByText('Mocked Footer Description')).toBeInTheDocument();
+  });
+
+  it('dispatches strapi fetch action on mount', () => {
+    render(<AepsPaymentKnowMoreModal open={true} handleClose={jest.fn()} />);
+    expect(mockDispatch).toHaveBeenCalledWith(getAePSDetailsFromStrappi());
+  });
+
+  it('calls handleClose when close icon is clicked', () => {
+    const handleClose = jest.fn();
+    render(<AepsPaymentKnowMoreModal open={true} handleClose={handleClose} />);
+    const closeBtn = screen.getByLabelText('close');
+    fireEvent.click(closeBtn);
+    expect(handleClose).toHaveBeenCalled();
+  });
+
+  it('does not render when open is false', () => {
+    const { container } = render(<AepsPaymentKnowMoreModal open={false} handleClose={jest.fn()} />);
+    expect(container.querySelector('[role="dialog"]')).not.toBeInTheDocument();
+  });
+});
