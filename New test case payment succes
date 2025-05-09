@@ -1,7 +1,6 @@
-// __tests__/AePSPaymentSuccessStatus.test.tsx
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
-import AePSPaymentSuccessStatus from '../path/to/AePSPaymentSuccessStatus'; // fix this path
+import AePSPaymentSuccessStatus from '../path/to/AePSPaymentSuccessStatus'; // Update this path
 import { useRouter } from 'next/router';
 import { useLocale } from 'ui';
 
@@ -35,7 +34,18 @@ jest.mock('../ToastComponent', () => () => <div data-testid="toast-component" />
 jest.mock('../positive-pay/common/custom-modal', () => () => <div data-testid="custom-modal" />);
 jest.mock('./aeps-payment-toggle-button', () => () => <div data-testid="toggle-button">Toggle</div>);
 
-describe('AePSPaymentSuccessStatus (minimal test)', () => {
+jest.mock('../../utils/constants', () => ({
+  Constants: {
+    false_boolean: false,
+    true_boolean: true,
+    INITIATED_CHANNEL: 'INITIATED',
+    SUCCESS: 'SUCCESS',
+    SUCCESS_UPPER: 'SUCCESS',
+    SERVICE_REQUEST_ROUTE: '/service-request',
+  },
+}));
+
+describe('AePSPaymentSuccessStatus - Safe Render Tests', () => {
   beforeEach(() => {
     (useRouter as jest.Mock).mockReturnValue({ push: jest.fn() });
     (useLocale as jest.Mock).mockReturnValue({
@@ -49,7 +59,7 @@ describe('AePSPaymentSuccessStatus (minimal test)', () => {
     });
   });
 
-  it('renders basic UI components without crashing', () => {
+  it('renders static UI correctly', () => {
     render(
       <AePSPaymentSuccessStatus
         mobileNumber="1234567890"
