@@ -1,0 +1,648 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import styles from '../../styles/enach.module.css'
+import { CARD_APP, ENACH_ERROR_CODES, IpAddress, Loader, PAYMENT_APP, Service_Request_APP, ToastMessage, UnauthorizedModal, useLocale } from 'ui'
+import { Alert, Button, Checkbox, CircularProgress } from '@mui/material'
+import { useRouter } from 'next/router';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { tncConfig, acceptTnc, enachGetData, mandateApprovedNB, retrieveTNC, generateOtp, mandateRejectNB, enachOpCode } from '../../redux/serviceRequestSlice';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { getRequestSessId } from '../../utils/utilsFunction';
+import { Constants, OTP_CONSTANT, TOAST_HIDE_DURATION } from '../../utils/constants';
+import VerifyOTPModal from '../VerifyOTPModal';
+import ErrorDetails from '../ErrorComponent/ErrorDetails';
+import TermsAndConditionsModal from '../TermsAndConditionsModal';
+
+interface ICbdtTransfer {
+  showErrorComponent?: boolean;
+  action?: keyof typeof ENACH_ERROR_CODES;
+}
+
+type ReturnPostDataType = {
+  CheckSumVal: string;
+  BankID: string;
+  MandateRespDoc: string;
+  RespType: string
+}
+
+
+export type IFailureAction = 'timeout' | 'locked' | 'otp_limit_exceeded';
+
+export type MandateResponse = {
+  return_code: number
+  data: {
+    accountNo: string
+    collectionAmount: string
+    maxAmt: string
+    npciRefId: string
+    mandateReqId: string
+    mandateCreTime: string
+    name: string
+    catDesc: string
+    consRefNo: string
+    Spn_Bnk_Nm: string
+    Email: string
+    Phone: string
+    Mobile: string
+    mndEnddate: string
+    mndStartDate: string
+    frequency: string
+  }
+}
+
+const TIMEOUT = 5_000;
+
+export default function EnachMandate(props: ICbdtTransfer) {
+  const [isChecked, setIsChecked] = useState(false);
+  const [step, setStep] = useState(props?.showErrorComponent ? 2 : 0);
+  const [showTncModal, setShowTncModal] = useState(false);
+  const [isAccepted, setIsAccepted] = useState(false);
+  const [isRejected, setIsRejected] = useState(false);
+  const [maxOtpAttempt, setMaxOtpAttempt] = useState(3);
+  const [maxValidateOtpAttempt, setMaxValidateOtpAttempt] = useState(3);
+  const [redirectAction, setRedirectAction] = useState<IFailureAction | null>(null);
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false)
+  const [showInvalidOTP, setShowInvalidOTP] = useState(false);
+  const [otpErrorMsg, setOtpErrorMsg] = useState('')
+  const [toastErrorMsg, setToastErrorMsg] = useState({ isOpen: false, message: "" })
+  const [otpId, setOtpId] = useState('');
+
+  const termsConditionData = useAppSelector(
+    (state) => state?.serviceRequest?.tncData?.data,
+  );
+
+  const cifId = useAppSelector((state) =>
+    state?.authdata?.verifyPostLoginResp?.cifDetails?.[0]?.finacleCif?.[0]?.CIF,
+  );
+  const userCountryCode = useAppSelector(
+    (state) => state?.authdata?.userProfile?.countryCode,
+  );
+
+  const generateOtpData = useAppSelector((state) => state?.serviceRequest?.generateOtpData);
+  const generateOtpStatus = useAppSelector((state) => state?.serviceRequest?.generateOtpStatus);
+
+  const enachGenerateRespData = useAppSelector((state) => state?.serviceRequest?.enachGenerateRespData);
+  const enachGenerateRespStatus = useAppSelector((state) => state?.serviceRequest?.enachGenerateRespStatus);
+
+  const enachFetchData = useAppSelector((state) => state?.serviceRequest?.enachGetData) as MandateResponse;
+  const enachGetDataStatus = useAppSelector((state) => state?.serviceRequest?.enachGetDataStatus);
+  const mobileNumberSliced = useAppSelector((state) => state?.authdata?.verifyPostLoginResp?.cifDetails[0]?.finacleCif[0]?.phoneNumber);
+  const accounts = useAppSelector(
+    (state) =>
+      state?.authdata?.verifyPostLoginResp?.cifDetails?.[0]?.finacleCif?.[0]?.accounts,
+  );
+  const [unauthorized, setUnauthorized] = useState(Constants?.false_boolean);
+  const scope = useAppSelector((state) => state?.authdata?.passwordVerfiedResp?.scope);
+  const mopAccounts = useAppSelector((state) => state?.authdata?.mopAccessResp?.cifDetails?.[0]?.finacleCif?.[0]?.accounts);
+
+  const isLoading = enachGenerateRespStatus == Constants?.LOADING || generateOtpStatus == Constants?.LOADING;
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    if (props?.showErrorComponent || !enachFetchData?.data?.accountNo || !accounts?.length) return;
+    const account = accounts?.find((account: any) => account?.accountNumber === enachFetchData?.data?.accountNo);
+    let isAccountPresent = false;
+    if (
+      account?.accountNumber && (!account?.acctClsDate ||
+        account?.acctClsDate == '' ||
+        account?.acctClsDate?.trim()?.toLowerCase() == 'null')
+    ) {
+      if (
+        account?.accountStatus.trim() == 'A' ||
+        account?.accountStatus.trim() == '' ||
+        account?.acctClsFlg != 'Y'
+      ) {
+        isAccountPresent = true;
+      }
+    }
+
+    if (!isAccountPresent) {
+      handleRejectClick("ACCOUNT_MISMATCH");
+    }
+
+  }, [accounts, enachFetchData])
+
+  useEffect(() => {
+    if (props?.showErrorComponent) return;
+    dispatch(retrieveTNC({
+      channelName: tncConfig?.tncChannelName,
+      moduleName: tncConfig?.module,
+      os: tncConfig?.os,
+    }))
+    dispatch(enachGetData(getRequestSessId()))
+  }, []);
+
+  useEffect(() => {
+    if (props?.showErrorComponent) return;
+    if (generateOtpStatus !== Constants?.SUCCESS) return;
+    if (generateOtpData?.status && generateOtpData?.referenceId) {
+      setOtpId(generateOtpData?.referenceId);
+      setIsOtpModalOpen(true);
+      setMaxOtpAttempt(prev => prev - 1);
+    } else if (generateOtpData?.responseMessage == 'user Locked' || generateOtpData?.responseMessage == 'Your number is locked, try after 24 hours') {
+      setRedirectAction('otp_limit_exceeded')
+      handleRejectClick('OTP_LIMIT');
+    } else if (generateOtpData?.status && !generateOtpData?.referenceId) {
+      setToastErrorMsg({
+        isOpen: true,
+        message: generateOtpData?.error?.message ||
+          locale?.SOMETHING_WENT_WRONG,
+      }
+      );
+    }
+  }, [generateOtpData, generateOtpStatus])
+
+
+  useEffect(() => {
+    if (props?.showErrorComponent) return;
+    if (isRejected) return;
+    if (enachGenerateRespStatus == Constants?.SUCCESS) {
+      if (enachGenerateRespData?.return_code == 0) {
+        setStep(2);
+        document.dispatchEvent(
+          new CustomEvent("portal.logout"),
+        );
+        window.sessionStorage.setItem('removeListners', "true");
+        setTimeout(() => {
+          openWithPost(enachGenerateRespData?.data?.returnUrl, enachGenerateRespData?.data ?? {})
+        }, TIMEOUT);
+      } else if (enachGenerateRespData?.return_code == 2) {
+        setMaxValidateOtpAttempt(prev => prev - 1);
+        setToastErrorMsg({
+          isOpen: true,
+          message: enachGenerateRespData?.message || locale?.SOMETHING_WENT_WRONG
+        });
+      } else {
+        setToastErrorMsg({
+          isOpen: true,
+          message: enachGenerateRespData?.message || locale?.SOMETHING_WENT_WRONG
+        });
+      }
+    }
+    if (enachGenerateRespStatus == Constants?.REJECTED) {
+      setToastErrorMsg({
+        isOpen: true,
+        message: enachGenerateRespData?.message || locale?.SOMETHING_WENT_WRONG
+      });
+    }
+
+  }, [enachGenerateRespData, enachGenerateRespStatus])
+
+
+  const openWithPost = (redirectUrl: string, redirectPostData: ReturnPostDataType) => {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = redirectUrl;
+
+    const hiddenField1 = document.createElement('input');
+    hiddenField1.type = 'hidden';
+    hiddenField1.name = 'BankID';
+    hiddenField1.value = redirectPostData?.BankID;
+    form.appendChild(hiddenField1);
+
+    const hiddenField2 = document.createElement('input');
+    hiddenField2.type = 'hidden';
+    hiddenField2.name = 'CheckSumVal';
+    hiddenField2.value = redirectPostData?.CheckSumVal;
+    form.appendChild(hiddenField2);
+
+    const hiddenField3 = document.createElement('input');
+    hiddenField3.type = 'hidden';
+    hiddenField3.name = 'MandateRespDoc';
+    hiddenField3.value = redirectPostData?.MandateRespDoc;
+    form.appendChild(hiddenField3);
+
+    const hiddenField4 = document.createElement('input');
+    hiddenField4.type = 'hidden';
+    hiddenField4.name = 'RespType';
+    hiddenField4.value = redirectPostData?.RespType;
+    form.appendChild(hiddenField4);
+
+    document.body.appendChild(form);
+    form.submit();
+  };
+
+  const handleOtpClose = useCallback(() => {
+    setIsOtpModalOpen(false)
+  }, [])
+
+  const handleOnOtpSubmitOtp = useCallback((otpValue: string) => {
+    dispatch(mandateApprovedNB?.({
+      ...getRequestSessId(),
+      referenceId: otpId,
+      otp: otpValue,
+      casaCif: cifId
+    }));
+  }, [otpId, cifId]);
+
+  const handleResendOtp = useCallback(() => {
+    dispatch(generateOtp({
+      channelId: OTP_CONSTANT.channelId,
+      moduleName: OTP_CONSTANT.moduleName,
+      mobileNumber: mobileNumberSliced,
+      hashKey: OTP_CONSTANT.hashKey,
+      emailId: OTP_CONSTANT.emailId,
+      deviceId: sessionStorage.getItem('userId'),
+      mode: OTP_CONSTANT.mode,
+      ipAddress: IpAddress(true),
+      browserDetails: OTP_CONSTANT.browserDetails,
+      countryCode: userCountryCode,
+    }))
+  }, [mobileNumberSliced, userCountryCode])
+
+
+
+
+  const handleRejectClick = async (action: keyof typeof ENACH_ERROR_CODES) => {
+
+    let opCode = enachOpCode.CANCEL_MANDATE_NB;
+    let reqBody: any = {
+      operationCode: opCode,
+      ...getRequestSessId(),
+      errorCode: ENACH_ERROR_CODES[action].reasonCode,
+      errorDesc: ENACH_ERROR_CODES[action].reasonDescription,
+    }
+
+    if (action == 'REJECT_BY_USER') {
+      opCode = enachOpCode.MANDATE_REJECTED_NB;
+      reqBody = {
+        operationCode: opCode,
+        ...getRequestSessId(),
+        ...ENACH_ERROR_CODES[action],
+      }
+    }
+
+    setIsRejected(true);
+    setStep(2);
+    let returnPostData = await dispatch(mandateRejectNB(reqBody));
+
+    let returnUrl = returnPostData?.payload?.data?.returnUrl;
+    if (!returnUrl) {
+      document.dispatchEvent(
+        new CustomEvent("portal.logout"),
+      );
+      return;
+    }
+
+    document.dispatchEvent(
+      new CustomEvent("portal.logout"),
+    );
+    window.sessionStorage.setItem('removeListners', "true");
+    setTimeout(() => {
+      openWithPost(returnUrl, returnPostData?.payload?.data ?? {})
+    }, TIMEOUT);
+  };
+
+
+  const handleOncloseToastMsg = useCallback(() => {
+    setToastErrorMsg({ isOpen: false, message: '' });
+  }, [])
+
+  const handleReject = async (action: keyof typeof ENACH_ERROR_CODES) => {
+    try {
+      const returnPostData = await dispatch(mandateRejectNB?.({
+        operationCode: enachOpCode.CANCEL_MANDATE_NB,
+        ...getRequestSessId(),
+        errorCode: ENACH_ERROR_CODES[action].reasonCode,
+        errorDesc: ENACH_ERROR_CODES[action].reasonDescription,
+      }));
+      setTimeout(() => {
+        openWithPost(returnPostData?.payload?.data?.returnUrl, returnPostData?.payload?.data ?? {})
+      }, TIMEOUT);
+    } catch (error) {
+      console.log("error", error);
+    }
+  }
+
+  useEffect(() => {
+    if (props?.showErrorComponent) {
+      setIsRejected(true);
+      setStep(2);
+      handleReject(props?.action!);
+    }
+  }, [props?.showErrorComponent, props?.action])
+
+  useEffect(() => {
+    if (props?.showErrorComponent) return;
+    if (maxOtpAttempt == 0) {
+      setRedirectAction('otp_limit_exceeded')
+      handleRejectClick('OTP_LIMIT');
+    }
+  }, [maxOtpAttempt])
+
+  useEffect(() => {
+    if (props?.showErrorComponent) return;
+    if (maxValidateOtpAttempt == 0) {
+      setIsOtpModalOpen(false);
+      setRedirectAction('otp_limit_exceeded')
+      handleRejectClick('OTP_LIMIT');
+    }
+  }, [maxValidateOtpAttempt])
+
+
+  const handleSubmit = useCallback(async () => {
+    const hasTransactAccess = mopAccounts?.some(
+      (account) =>
+        account?.accountNumber === enachFetchData?.data?.accountNo &&
+        (account.accountStatus === 'A' ||
+          account.accountStatus === '') &&
+        account.accessType === 'Transact',
+    )
+    if (scope == 'retail-view' || hasTransactAccess) {
+      setUnauthorized(Constants?.true_boolean);
+      return;
+    }
+
+
+    setIsAccepted(true);
+    if (!isAccepted) {
+      dispatch(acceptTnc({
+        cifId: cifId! ?? sessionStorage.getItem('cif_id'),
+        countryCallingCode: userCountryCode,
+        mobileNumber: mobileNumberSliced!,
+        deviceId: '',
+        channelName: tncConfig?.tncChannelName,
+        tncId: termsConditionData?.tncId,
+        tncVersion: termsConditionData?.version,
+        isAccepted: true,
+        appVersion: '',
+        ipAddress: IpAddress(true),
+      }))
+    }
+    handleResendOtp();
+  }, [isAccepted, handleResendOtp, userCountryCode, mobileNumberSliced, termsConditionData]);
+
+
+  const handleChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setIsChecked(event.target.checked)
+  }, [])
+  const locale = useLocale(useRouter()?.locale)?.serviceRequest;
+
+
+  const first_name = useAppSelector((state) =>
+    state?.authdata?.verifyPostLoginResp?.cifDetails[0]?.finacleCif[0]?.firstName,
+  );
+  const gender = useAppSelector((state) =>
+    state?.authdata?.verifyPostLoginResp?.cifDetails[0]?.finacleCif[0]?.gender,
+  );
+
+  const lastName = useAppSelector((state) =>
+    state?.authdata?.verifyPostLoginResp?.cifDetails[0]?.finacleCif[0]?.lastName,
+  );
+
+
+  const fullName = useMemo(() => {
+    if (gender === 'M') {
+      return `Mr. ${first_name} ${lastName}`
+    } else {
+      return `Mrs. ${first_name} ${lastName}`
+    }
+  }, [first_name, lastName, gender])
+
+  const handleOnTermsClick = useCallback(() => {
+    setShowTncModal((value) => !value);
+  }, []);
+
+  const isSuccess = enachGenerateRespData == Constants.SUCCESS && !isRejected;
+
+  const getRefNo = (isSuccess?: boolean) => {
+    if (isSuccess) {
+      return enachFetchData?.data?.npciRefId
+    }
+    return enachFetchData?.data?.npciRefId
+  }
+
+  const mandateDetailConfig = useMemo(() => {
+    return [{ label: locale?.ACC_NUMBER, key: "accountNo", value: enachFetchData?.data?.accountNo },
+    { label: locale?.UMRN_NUMBER, key: "umrn_number", value: enachFetchData?.data?.npciRefId },
+    { label: locale?.MERCHANT_NAME, key: "merchant_name", value: enachFetchData?.data?.catDesc },
+    { label: locale?.EMI_AMOUNT, key: "emi_amount", value: "₹ " + enachFetchData?.data?.collectionAmount },
+    { label: locale?.SEQUENCE_TYPE, key: "sequenctType", value: enachFetchData?.data?.name },
+    { label: locale?.FREQUENCY_TXT, key: "frequency", value: enachFetchData?.data?.frequency },
+    { label: locale?.START_DATE, key: "startDate", value: enachFetchData?.data?.mndStartDate },
+    { label: locale?.END_DATE, key: "endDate", value: enachFetchData?.data?.mndEnddate }]
+  }, [locale, enachFetchData])
+
+  const getErrorMsg = () => {
+    let msg = '';
+    if (props?.action == "IDLE_TIMEOUT") {
+      msg = 'Due to inactivity, Please try again.'
+    } else if (props?.action == "ACCOUNT_LOCKED") {
+      msg = 'Please unlock your account to proceed.'
+    } else if (redirectAction == 'otp_limit_exceeded') {
+      msg = 'You have exceeded the OTP limit. Please try again later.'
+    }
+    return msg;
+  };
+
+  const handleChangeAccess = useCallback(async () => {
+    setUnauthorized(Constants?.false_boolean);
+  }, []);
+
+  if (enachGetDataStatus == Constants.LOADING && !props?.showErrorComponent) {
+    return <Loader />
+  }
+
+  if ((!enachFetchData?.data || enachFetchData?.return_code !== 0) && !props?.showErrorComponent) {
+    return <ErrorDetails
+      imgsrc={Service_Request_APP?.SOCKET}
+      text={locale?.Please_try_again}
+      maintext={locale?.DATA_ERROR}
+      buttontext={locale?.try_again}
+      imgalt="Errorimg"
+      onClick={() => {
+        dispatch(enachGetData({
+          requestId: getRequestSessId()
+        }));
+      }}
+      buttonlink={''}
+    />
+  }
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <img className={styles.headerLogo} src={Service_Request_APP.INDUSIND_WHITE_LOGO} alt="" />
+      </div>
+
+
+      <div className={styles.summaryCenterContainer}>
+        <div
+          className={styles.summaryContainer}
+          style={{ ...(!props?.showErrorComponent && { backgroundImage: `url(${Service_Request_APP?.ENACH_SUMMARY_BANNER})` }) }}
+        >
+
+          {!props?.showErrorComponent && <>
+            <div className={styles.summaryHeader} >
+              <div className={styles.summaryHeaderTitle}>
+                {"Welcome to IndusInd Bank"}
+              </div>
+              <div className={styles.summaryHeaderSubTitle}>
+                {fullName}
+              </div>
+            </div>
+            <div className={styles.stepperAlignCenter}>
+              <div className={styles.stepperContainer}>
+
+                <div className={styles.stepper}>
+                  {step > 0 ? <CheckCircleIcon className={styles.circle} /> :
+                    <div className={step == 0 ? `${styles.stepperCircle} ${styles.stepperCircleActive}` : styles.stepperCircle}>
+                      {"1"}
+                    </div>
+                  }
+                  <div className={styles.stepperTxt}>
+                    {locale?.MANDATE_DETAILS}
+                  </div>
+                </div>
+                <hr className={styles.stepperLine} />
+
+                <div className={styles.stepper}>
+                  {step > 1 ? <CheckCircleIcon className={styles.circle} /> : <div className={step == 1 ? `${styles.stepperCircle} ${styles.stepperCircleActive}` : styles.stepperCircle}>
+                    {"2"}
+                  </div>}
+                  <div className={styles.stepperTxt}>
+                    {"Mandate Confirmation"}
+                  </div>
+                </div>
+                <hr className={styles.stepperLine} />
+
+                <div className={styles.stepper}>
+                  {step > 2 ? <CheckCircleIcon className={styles.circle} /> : <div className={step == 2 ? `${styles.stepperCircle} ${styles.stepperCircleActive}` : styles.stepperCircle}>
+                    {"3"}
+                  </div>}
+                  <div className={styles.stepperTxt}>
+                    {"Mandate Summary"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>}
+          <div className={styles.summary}>
+            {step == 2 ?
+              <div className={styles.successContainer}>
+                <div className={styles.successIcon}>
+                  {isSuccess ?
+
+                    <img src={PAYMENT_APP.SUCCESS_GIF} alt={""} />
+                    : <img src={PAYMENT_APP.FAILED} alt={""} />
+                  }
+                </div>
+                <div className={styles.successTxt}>
+                  {isSuccess ? locale?.SUCCESS_EXLAMATION : locale?.FAILED_EXLAMATION}
+                </div>
+                <div className={styles.successSubTxt}>
+                  {isSuccess ?
+                    locale?.ENACH_SUCCESS :
+                    locale?.ENACH_FAILED + getErrorMsg()}
+                </div>
+                {isSuccess && <div className={styles.referenceId}>
+                  {`${locale?.ENACH_REFID} ${getRefNo(true)}`}
+                </div>}
+                {isRejected && !props?.showErrorComponent && <div className={styles.referenceId}>
+                  {`${locale?.ENACH_REFID} ${getRefNo()}`}
+                </div>}
+
+                <Alert
+                  icon={<img src={CARD_APP.info_circled} alt="" className={styles.alertIcon} />}
+                  className={styles.alert}
+                >
+                  {locale?.ENACH_ALERT}
+                </Alert>
+
+              </div>
+              :
+              <div className={styles.summaryCol1}>
+                <div className={styles.summaryCol1Header}>
+                  <div className={styles.summaryCol1HeaderTxt}>
+                    {locale?.MANDATE_DETAILS}
+                  </div>
+
+                </div>
+
+                {mandateDetailConfig?.map(i =>
+                  <div key={i?.label} className={styles.summaryCol1ContentRow}>
+                    <div className={styles.summaryCol1ContentCol1}>
+                      {i?.label}
+                    </div>
+                    <div className={styles.summaryCol1ContentCol2}>
+                      {i?.value}
+                    </div>
+                  </div>
+                )}
+
+
+              </div>
+            }
+
+          </div>
+
+          {step != 2 && <div className={styles.footer}>
+            <div className={`${styles.footerRow}`}>
+              <Checkbox
+                className={`${styles.footerCheckbox}`}
+                checked={isChecked}
+                onChange={handleChange}
+                inputProps={{ 'aria-label': 'controlled' }}
+                color="primary"
+              />
+
+              <div className={`${styles.footerTncTxt}`}>I accept <span onClick={handleOnTermsClick}>Terms & Conditions</span> for Mandate Registration through IndusNet.</div>
+            </div>
+            <div className={`${styles.footerRow} ${styles.footerRow2}`}>
+              <Button
+                onClick={() => {
+                  handleRejectClick("REJECT_BY_USER");
+                }}
+                variant="outlined" className={`${styles.footerButton} ${styles.footerButton1}`}>
+                Reject
+              </Button>
+              <Button onClick={handleSubmit} disabled={isLoading || !isChecked} variant="contained" className={`${styles.footerButton} ${styles.footerButton2}`}>
+                {isLoading ? <CircularProgress sx={{ color: "#ffffff" }} size={20} /> : "Accept"}
+              </Button>
+            </div>
+          </div>}
+
+        </div>
+      </div>
+      <UnauthorizedModal
+        handleClose={() => {
+          setUnauthorized(Constants?.false_boolean);
+        }}
+        mopaccess={true}
+        handleChangeAccess={handleChangeAccess}
+        Unauthorized={unauthorized}
+        setUnauthorized={setUnauthorized}
+        isSingleUnauthorizeAccount={true}
+      />
+
+      <VerifyOTPModal
+        open={isOtpModalOpen}
+        handleClose={handleOtpClose}
+        locale={locale}
+        handleclickBack={handleOnOtpSubmitOtp}
+        handleSendOTPClick={handleResendOtp}
+        errorMessage={otpErrorMsg}
+        showInvalidOTP={showInvalidOTP}
+        setShowInvalidOTP={setShowInvalidOTP}
+        setErrorMessage={setOtpErrorMsg}
+        responsive={true}
+        maxOtpAttempt={maxOtpAttempt}
+      />
+
+      <TermsAndConditionsModal
+        termsContent={termsConditionData?.contents}
+        open={showTncModal}
+        handleClose={handleOnTermsClick}
+        handleAgree={handleOnTermsClick}
+        primaryActionText={locale?.OKAY}
+      />
+
+      <ToastMessage
+        open={toastErrorMsg.isOpen}
+        message={toastErrorMsg.message}
+        onClose={handleOncloseToastMsg}
+        autoHideDuration={TOAST_HIDE_DURATION}
+      />
+
+    </div>
+  )
+}
