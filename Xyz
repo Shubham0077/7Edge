@@ -1,0 +1,102 @@
+import React from 'react'
+import { render, screen, fireEvent } from '@testing-library/react'
+import '@testing-library/jest-dom'
+import { Provider } from 'react-redux'
+import EnachMandate from '../../components/EnachMandate/mandate'
+import * as reduxHooks from '../../redux/hooks'
+
+jest.mock('next/router', () => ({
+  useRouter: () => ({ locale: 'en' }),
+}))
+
+jest.mock('../../redux/hooks', () => ({
+  useAppDispatch: jest.fn(),
+  useAppSelector: jest.fn(),
+}))
+
+describe('EnachMandate - Final Stable Tests (no redux, no mock-store)', () => {
+  const dispatchMock = jest.fn()
+
+  const fakeStore = {
+    getState: () => ({}),
+    subscribe: () => () => {},
+    dispatch: dispatchMock,
+  }
+
+  const mockState = {
+    authdata: {
+      verifyPostLoginResp: {
+        cifDetails: [{
+          finacleCif: [{
+            CIF: 'CIF001',
+            phoneNumber: '9999999999',
+            firstName: 'John',
+            lastName: 'Doe',
+            gender: 'M',
+            accountStatus: 'A',
+            accountNumber: '001',
+            accounts: [{ accountNumber: '001', accountStatus: 'A', accessType: 'Transact' }]
+          }]
+        }],
+        userProfile: { countryCode: '91' }
+      },
+      passwordVerfiedResp: { scope: 'full' },
+      mopAccessResp: {
+        cifDetails: [{
+          finacleCif: [{
+            accounts: [{ accountNumber: '001', accountStatus: 'A', accessType: 'Transact' }]
+          }]
+        }]
+      }
+    },
+    serviceRequest: {
+      generateOtpData: {},
+      generateOtpStatus: '',
+      enachGenerateRespData: {},
+      enachGenerateRespStatus: '',
+      enachGetDataStatus: '',
+      enachGetData: {
+        return_code: 0,
+        data: {
+          accountNo: '001',
+          npciRefId: 'NP1234',
+          collectionAmount: '1000',
+          name: 'Auto Debit',
+          catDesc: 'Merchant',
+          mndStartDate: '2024-01-01',
+          mndEnddate: '2024-12-31',
+          frequency: 'Monthly',
+        }
+      },
+      tncData: { data: { tncId: 'tnc1', version: 'v1', contents: 'T&C text' } }
+    }
+  }
+
+  beforeEach(() => {
+    (reduxHooks.useAppDispatch as jest.Mock).mockReturnValue(dispatchMock)
+    ;(reduxHooks.useAppSelector as jest.Mock).mockImplementation((selector) => selector(mockState))
+  })
+
+  it('renders welcome and full name', () => {
+    render(
+      <Provider store={fakeStore}>
+        <EnachMandate />
+      </Provider>
+    )
+    expect(screen.getByText('Welcome to IndusInd Bank')).toBeInTheDocument()
+    expect(screen.getByText('Mr. John Doe')).toBeInTheDocument()
+    expect(screen.getByText(/Mandate Details/i)).toBeInTheDocument()
+  })
+
+  it('checks and unchecks checkbox', () => {
+    render(
+      <Provider store={fakeStore}>
+        <EnachMandate />
+      </Provider>
+    )
+    const checkbox = screen.getByRole('checkbox')
+    expect(checkbox).not.toBeChecked()
+    fireEvent.click(checkbox)
+    expect(checkbox).toBeChecked()
+  })
+})
