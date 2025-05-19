@@ -1,0 +1,76 @@
+// file: components/UpdateAddressModal.tsx
+import React, { FC, useState } from 'react';
+import styles from './UpdateAddressModal.module.css';
+
+interface UpdateAddressModalProps {
+  isOpen: boolean;
+  onCancel: () => void;
+  onSubmit: () => void;
+  userName: string;
+  initials: string;
+  address: string;
+}
+
+export const UpdateAddressModal: FC<UpdateAddressModalProps> = ({
+  isOpen,
+  onCancel,
+  onSubmit,
+  userName,
+  initials,
+  address,
+}) => {
+  const [isChecked, setIsChecked] = useState(false);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className={styles.overlay}>
+      <div className={styles.modal}>
+        <h2 className={styles.title}>Update Communication Address</h2>
+
+        <div className={styles.header}>
+          <div className={styles.avatar}>{initials}</div>
+          <div className={styles.name}>{userName}</div>
+        </div>
+
+        <div className={styles.addressSection}>
+          <div className={styles.addressLabel}>
+            <svg xmlns="http://www.w3.org/2000/svg" height="16" viewBox="0 0 24 24" width="16" fill="#a33" style={{ marginRight: 8 }}>
+              <path d="M0 0h24v24H0z" fill="none"/>
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/>
+            </svg>
+            Communication Address
+          </div>
+          <div className={styles.addressText}>
+            {address.split('\n').map((line, i) => (
+              <div key={i}>{line}</div>
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.checkbox}>
+          <input
+            type="checkbox"
+            id="confirm"
+            checked={isChecked}
+            onChange={() => setIsChecked(!isChecked)}
+          />
+          <label htmlFor="confirm" className={styles.checkboxLabel}>
+            I confirm that the mentioned address is my current communication address.
+          </label>
+        </div>
+
+        <div className={styles.actions}>
+          <button className={styles.cancelBtn} onClick={onCancel}>Cancel</button>
+          <button
+            className={styles.submitBtn}
+            onClick={onSubmit}
+            disabled={!isChecked}
+          >
+            Submit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
