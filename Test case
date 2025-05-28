@@ -1,0 +1,25 @@
+const state1 = {
+  authdata: {
+    verifyPreLoginResp: {
+      response: {
+        data: [
+          {
+            finacleCif: [
+              {
+                indianResident: true, // or false, depending on your test
+              },
+            ],
+          },
+        ],
+        transactionModes: [{ name: 'Vehicle Loan' }],
+        viewOnlyModes: [{ name: 'Vehicle Loan' }],
+      },
+      userRegistrationProfile: {
+        mobile_number: '1231231233',
+      },
+      tncRegAadharData: {
+        contents: 'tnc',
+      },
+    },
+  },
+};
