@@ -1,0 +1,300 @@
+import {
+  Box,
+  Radio,
+  RadioGroup,
+  FormControl,
+  FormControlLabel,
+  Typography,
+  Grid,
+  useMediaQuery,
+  SelectChangeEvent,
+} from '@mui/material';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+import ScreenContainer from '../../components/screenContainer';
+import { useLocale, UnauthorizedModal } from 'ui';
+import {
+  SCREEN_NAMES,
+  MOP_RETAIL_ACCESS_TYPES,
+  constants,
+  MOP_ACCESS_TYPES,
+} from '../../utils/constants';
+import styles from '../../styles/resetPin/resetpin.module.css';
+import stylesBillpay from '../../styles/creditCardBill/creditCardBill.module.css';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  ICreditCardDashboard,
+  getCreditcardAccountDetailsAction,
+} from '../../redux/slices/creditCardDashboardSlice';
+import { AppDispatch, IState } from '../../redux/creditcardStore';
+import MuiTextField from '../../components/common-components/MuiTextField';
+import BootstrapTooltipComponent from '../../components/common-components/BootstrapTooltipComponent';
+import { setSelectedSavingAccount } from '../../redux/slices/creditCardBillPaySlice';
+import { IAuthSate, IMopFinacleAccount } from '../../utils/authInteface';
+
+enum RadioBtn {
+  PAY_LAST_BILL_DUE = 'PAY_LAST_BILL_DUE',
+  PAY_MINIMUM_DUE = 'PAY_MINIMUM_DUE',
+  PAY_TOTAL_OUTSTANDING = 'PAY_TOTAL_OUTSTANDING',
+  CUSTOM_AMOUNT_DUE = 'CUSTOM_AMOUNT_DUE',
+}
+
+
+
+const CreditcardBillPaymentCASA = () => {
+  const router = useRouter();
+  const locale = useLocale(useRouter().locale)?.creditcard;
+  const isMobile = useMediaQuery('(max-width:500px)');
+
+  const dispatch: AppDispatch = useDispatch();
+  const rootReducer = useSelector((state: IState) => state);
+  const creditCardDashboardReducer: ICreditCardDashboard =
+    rootReducer?.creditcardCombineReducers?.creditCardDashboardReducer;
+  const selectedCard = creditCardDashboardReducer?.selectedCreditCardData ?? {};
+
+  const [enableConfirmBtn, setEnableConfirmBtn] = useState<boolean>(false);
+  const [customAmountDue, setCustomAmountDue] = useState<string>('');
+  const [customAmountError, setCustomAmountError] = useState<string>('');
+  const [selctedRadioButtonValue, setSelctedRadioButtonValue] = useState('');
+  const [unauthorized, setUnauthorized] = useState(false);
+  const [isTransactMopError, setIsTransactMopError] = useState(false);
+  let minmumAmountDue = creditCardDashboardReducer?.creditCardAccountDetails?.pmtTotAmtDue ?? '';
+  let totalAmountDue = creditCardDashboardReducer?.creditCardAccountDetails?.qualGraceBal ?? '';
+  let payTotalOutstanding = selectedCard?.outstandingBalance ?? '';
+
+  const scope = useSelector((state: IAuthSate) => state?.authdata?.passwordVerfiedResp?.scope);
+  const verifyPostLoginResp = useSelector(
+    (state: IAuthSate) => state?.authdata?.verifyPostLoginResp,
+  );
+  let authdata = useSelector((state: IAuthSate) => state?.authdata);
+
+  useEffect(() => {
+    const param = {
+      account: selectedCard?.crdNbr,
+    };
+    dispatch(getCreditcardAccountDetailsAction(param));
+  }, []);
+
+  const handleChange = (event?: SelectChangeEvent) => {
+    let value = event?.target?.value ?? '';
+    setSelctedRadioButtonValue(value);
+    if (value === RadioBtn.CUSTOM_AMOUNT_DUE) {
+      setEnableConfirmBtn(false);
+    } else {
+      setEnableConfirmBtn(true);
+    }
+  };
+
+  const onChangeCustomAmount = (amount: string) => {
+    setCustomAmountDue(amount);
+    if (Number(amount) >= 1 && Number(amount) <= Number(selectedCard?.totCrlim)) {
+      setCustomAmountError('');
+      setEnableConfirmBtn(true);
+    } else if (amount) {
+      setCustomAmountError(
+        `${locale?.MIN} : 1, ${locale?.Max} : ${currencyFormat(selectedCard?.totCrlim)}`,
+      );
+      setEnableConfirmBtn(false);
+    } else {
+      setCustomAmountError('');
+      setEnableConfirmBtn(false);
+    }
+  };
+
+  const isTransactMopAccessPresent = () => {
+    const accountData = verifyPostLoginResp?.cifDetails[0].finacleCif[0]?.accounts;
+    const customer_accounts = accountData?.filter(
+      (item) =>
+        item?.schemeType === constants.SCHEME_TYPE_SAVING ||
+        item?.schemeType === constants.SCHEME_TYPE_CURRENT,
+    );
+    const customer_active_accounts = customer_accounts?.filter(
+      (item) =>
+        item?.accountStatus === 'A' || item?.accountStatus === '' || item?.accountStatus === ' ',
+    );
+    let isTransactAccessPresent = false;
+    customer_active_accounts?.some((acc) => {
+      const mopAcc =
+        authdata?.mopAccessResp?.cifDetails?.[0]?.finacleCif?.[0]?.accounts?.find(
+          (item: IMopFinacleAccount) => item?.accountNumber === acc?.accountNumber,
+        ) ?? null;
+      if (mopAcc?.accessType === MOP_ACCESS_TYPES.TRANSACT) {
+        isTransactAccessPresent = true;
+        return true;
+      }
+    });
+    return isTransactAccessPresent;
+  };
+
+  const navigateToPayNow = () => {
+    if (scope === MOP_RETAIL_ACCESS_TYPES.VIEW) {
+      setUnauthorized(true);
+      return;
+    }
+    if (!isTransactMopAccessPresent()) {
+      setUnauthorized(true);
+      setIsTransactMopError(true);
+      return;
+    }
+    let billpayAmount = '';
+    if (selctedRadioButtonValue === RadioBtn.CUSTOM_AMOUNT_DUE) {
+      billpayAmount = customAmountDue;
+    } else if (selctedRadioButtonValue === RadioBtn.PAY_TOTAL_OUTSTANDING) {
+      billpayAmount = payTotalOutstanding;
+    } else if (selctedRadioButtonValue === RadioBtn.PAY_LAST_BILL_DUE) {
+      billpayAmount = totalAmountDue;
+    } else {
+      billpayAmount = minmumAmountDue;
+    }
+    dispatch(setSelectedSavingAccount(null));
+    router.push(
+      {
+        pathname: SCREEN_NAMES.CREDIT_CARD_BILL_PAYMENT_CASA_PAYNOW,
+        query: { billpayAmount: billpayAmount },
+      },
+      SCREEN_NAMES.CREDIT_CARD_BILL_PAYMENT_CASA_PAYNOW,
+    );
+  };
+
+  const currencyFormat = (str: any, currSign = true) => {
+    try {
+      str = parseFloat(str)?.toFixed(2);
+      //₹
+      str = str?.toLocaleUpperCase();
+      if (str != 'NAN') {
+
+        return parseFloat(str)?.toLocaleString('en-IN');
+
+      } else {
+        return '-';
+      }
+    } catch (error) {
+      console.error('Error formatting currency:', error);
+      return '-';
+    }
+  };
+
+  const handleChangeAccess = useCallback(() => {
+    setUnauthorized(false);
+    document.dispatchEvent(new CustomEvent('portal.openViewTransactModal'));
+  }, []);
+
+  const returnMpinContainer = () => {
+    return (
+      <Grid item xs={12} sm={8.5}>
+        <Box className={styles.BoxContainer} p={3} borderRadius={5}>
+          <Grid container spacing={2} mb={isMobile ? 4 : 20}>
+            <Grid item xs={12}>
+              <Typography variant="body1" className={styles.HeaderText} component="p">
+                {locale?.SELECT_OR_ENTER_AMOUNT}
+              </Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <Grid container>
+                <Grid item xs={12} mb={2}>
+                  <FormControl component="fieldset">
+                    <RadioGroup value={selctedRadioButtonValue} onChange={handleChange}>
+                      <FormControlLabel
+                        className={`${styles.Lable10} ${stylesBillpay.shadeGray10}`}
+                        value={RadioBtn.PAY_LAST_BILL_DUE}
+                        control={<Radio />}
+                        disabled={Number(totalAmountDue) <= 0}
+                        label={
+                          <Typography className={styles.label16}>
+                            {locale?.PAY_LAST_BILL_DUE}
+                            <span className={stylesBillpay.RupeeFont}>
+                              {`: ${locale?.RUPEES} `}
+                            </span>
+                            {currencyFormat(totalAmountDue)}
+                          </Typography>
+                        }
+                      />
+                      <FormControlLabel
+                        className={`${styles.Lable10} ${stylesBillpay.shadeGray10}`}
+                        value={RadioBtn.PAY_MINIMUM_DUE}
+                        control={<Radio />}
+                        disabled={Number(minmumAmountDue) <= 0}
+                        label={
+                          <Typography
+                            className={`${styles.label16} ${stylesBillpay.minimumDueTextInfo}`}
+                          >
+                            {locale?.MINIMUM_AMOUNT_DUE}
+                            <BootstrapTooltipComponent info={locale?.MINIMUM_DUE_INFO} />
+                            <span className={stylesBillpay.RupeeFont}>
+                              {`: ${locale?.RUPEES} `}
+                            </span>
+                            {currencyFormat(minmumAmountDue)}
+                          </Typography>
+                        }
+                      />
+                      <FormControlLabel
+                        className={`${styles.Lable10} ${stylesBillpay.shadeGray10}`}
+                        value={RadioBtn.PAY_TOTAL_OUTSTANDING}
+                        control={<Radio />}
+                        disabled={Number(payTotalOutstanding) <= 0}
+                        label={
+                          <Typography className={styles.label16}>
+                            {locale?.PAY_TOTAL_OUTSTANDING}
+                            <span className={stylesBillpay.RupeeFont}>
+                              {`: ${locale?.RUPEES} `}
+                            </span>
+                            {currencyFormat(payTotalOutstanding)}
+                          </Typography>
+                        }
+                      />
+                      <FormControlLabel
+                        className={`${styles.Lable10} ${stylesBillpay.shadeGray10}`}
+                        value={RadioBtn.CUSTOM_AMOUNT_DUE}
+                        control={<Radio />}
+                        label={
+                          <Typography
+                            className={styles.label16}
+                          >{`${locale?.CUSTOM_AMOUNT}`}</Typography>
+                        }
+                      />
+                    </RadioGroup>
+                    {selctedRadioButtonValue === RadioBtn.CUSTOM_AMOUNT_DUE && (
+                      <div className={stylesBillpay.customAmountTextFiled}>
+                        <MuiTextField
+                          type="number"
+                          value={customAmountDue}
+                          onChange={(e) => onChangeCustomAmount(e.target.value)}
+                          errorText={customAmountError}
+                          rupee
+                        />
+                      </div>
+                    )}
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </Grid>
+          </Grid>
+        </Box>
+      </Grid>
+    );
+  };
+
+  return (
+    <ScreenContainer
+      screenName={locale?.PAY_CREDIT_CARD_BILL}
+      showMore={false}
+      footerOnCancelText={locale?.CANCEL}
+      footerOnSuccessText={locale?.PROCEED}
+      enableConfirmBtn={enableConfirmBtn}
+      footerOnCancel={() => router.push(SCREEN_NAMES.DASHBOARD)}
+      footerOnSuccess={navigateToPayNow}
+    >
+      {returnMpinContainer()}
+      <UnauthorizedModal
+        handleClose={() => {
+          setUnauthorized(false);
+        }}
+        mopaccess={isTransactMopError}
+        handleChangeAccess={handleChangeAccess}
+        Unauthorized={unauthorized}
+        setUnauthorized={setUnauthorized}
+      />
+    </ScreenContainer>
+  );
+};
+export default CreditcardBillPaymentCASA;
