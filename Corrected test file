@@ -1,0 +1,259 @@
+import '@testing-library/jest-dom';
+import { fireEvent, render, screen } from '@testing-library/react';
+import LocaleConstant from '../../public/locales/en-us.json';
+import { useDispatch, useSelector } from 'react-redux';
+import CreditcardBillPaymentCASA from '../../pages/creditcardBillPaymentCASA';
+import { SCREEN_NAMES } from '../../utils/constants';
+import { useRouter } from 'next/router';
+
+jest.mock('authorization/authSlice', () => {}, { virtual: true });
+
+jest.mock('jose', () => ({
+  jose: jest.fn(),
+}));
+
+jest.mock('react-redux', () => ({
+  ...jest.requireActual('react-redux'),
+  useDispatch: jest.fn(),
+  useSelector: jest.fn(),
+  dispatch: jest.fn(),
+}));
+
+jest.mock('@moengage/web-sdk', () => ({
+  initialize: jest.fn(),
+  add_unique_user_id: jest.fn(),
+  track_event: jest.fn(),
+  add_user_attribute: jest.fn(),
+  isMoeLoaded: jest.fn().mockReturnValue(true),
+}));
+
+jest.mock('ui', () => ({
+  ...jest.requireActual('ui'),
+  useLocale: () => ({
+    ...LocaleConstant,
+  }),
+}));
+
+jest.mock('next/router', () => ({
+  useRouter: jest.fn(),
+}));
+
+const push = jest.fn();
+(useRouter as jest.Mock).mockReturnValue({ push });
+
+describe('CreditcardBillPaymentCASA', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('renders static UI text correctly', () => {
+    useDispatch.mockReturnValue(jest.fn());
+    const { getByText } = render(<CreditcardBillPaymentCASA />);
+
+    expect(getByText(/Pay Credit Card Bill/i)).toBeInTheDocument();
+    expect(getByText('Select or enter the amount')).toBeInTheDocument();
+    expect(getByText('Expiry Date')).toBeInTheDocument();
+    expect(getByText('CVV')).toBeInTheDocument();
+    expect(getByText('Cancel')).toBeInTheDocument();
+  });
+
+  test('renders radio buttons and handles selection', () => {
+    useDispatch.mockReturnValue(jest.fn());
+    useSelector.mockImplementation((cb: any) => cb({}));
+
+    render(<CreditcardBillPaymentCASA />);
+
+    const radio1 = screen.getByLabelText(/Pay Last Bill Due/i);
+    const radio2 = screen.getByLabelText(/Pay Minimum Due/i);
+    const radio3 = screen.getByLabelText(/Pay Total Outstanding/i);
+    const radio4 = screen.getByLabelText(/Custom Amount/i);
+
+    expect(radio1).toBeInTheDocument();
+    expect(radio2).toBeInTheDocument();
+    expect(radio3).toBeInTheDocument();
+    expect(radio4).toBeInTheDocument();
+
+    fireEvent.click(radio1);
+    fireEvent.click(radio2);
+    fireEvent.click(radio3);
+    fireEvent.click(radio4);
+  });
+
+  test('proceeds and cancels with valid selections', () => {
+    useDispatch.mockReturnValue(jest.fn());
+    useSelector.mockImplementation((cb: any) =>
+      cb({
+        authdata: {
+          verifyPostLoginResp: {
+            cifDetails: [
+              {
+                finacleCif: [
+                  {
+                    accounts: [{ schemeType: 'SBA', accountStatus: 'A', accountNumber: '123' }],
+                  },
+                ],
+              },
+            ],
+          },
+          mopAccessResp: {
+            cifDetails: [
+              {
+                finacleCif: [
+                  {
+                    accounts: [
+                      { accessType: 'Transact', accountStatus: 'A', accountNumber: '123' },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          passwordVerfiedResp: {
+            scope: 'retail',
+          },
+        },
+        creditcardCombineReducers: {
+          creditCardDashboardReducer: {
+            selectedCreditCardData: {
+              outstandingBalance: '1000',
+              totCrlim: '50000',
+              crdNbr: '123456789',
+            },
+            creditCardAccountDetails: {
+              pmtTotAmtDue: '100',
+              qualGraceBal: '200',
+            },
+          },
+        },
+      }),
+    );
+
+    render(<CreditcardBillPaymentCASA />);
+
+    const radio4 = screen.getByLabelText(/Custom Amount/i);
+    fireEvent.click(radio4);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(push).toHaveBeenCalledWith(SCREEN_NAMES.DASHBOARD);
+
+    const radio1 = screen.getByLabelText(/Pay Last Bill Due/i);
+    fireEvent.click(radio1);
+    expect(screen.getByRole('button', { name: 'Proceed' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed' }));
+  });
+
+  test('disables Proceed on invalid custom amount input', () => {
+    useDispatch.mockReturnValue(jest.fn());
+    useSelector.mockImplementation((cb: any) =>
+      cb({
+        authdata: {
+          verifyPostLoginResp: {
+            cifDetails: [
+              {
+                finacleCif: [
+                  {
+                    accounts: [{ schemeType: 'SBA', accountStatus: 'A', accountNumber: '123' }],
+                  },
+                ],
+              },
+            ],
+          },
+          mopAccessResp: {
+            cifDetails: [
+              {
+                finacleCif: [
+                  {
+                    accounts: [
+                      { accessType: 'Transact', accountStatus: 'A', accountNumber: '123' },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          passwordVerfiedResp: {
+            scope: 'retail',
+          },
+        },
+        creditcardCombineReducers: {
+          creditCardDashboardReducer: {
+            selectedCreditCardData: {
+              totCrlim: '5000',
+            },
+          },
+        },
+      }),
+    );
+
+    render(<CreditcardBillPaymentCASA />);
+    fireEvent.click(screen.getByLabelText(/Custom Amount/i));
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '999999' } });
+    expect(screen.getByRole('button', { name: 'Proceed' })).toBeDisabled();
+    expect(screen.getByText(/Min/i)).toBeInTheDocument();
+  });
+
+  test('displays UnauthorizedModal when scope is view only', () => {
+    useDispatch.mockReturnValue(jest.fn());
+    useSelector.mockImplementation((cb: any) =>
+      cb({
+        authdata: {
+          passwordVerfiedResp: {
+            scope: 'view',
+          },
+          verifyPostLoginResp: {
+            cifDetails: [
+              {
+                finacleCif: [
+                  {
+                    accounts: [{ schemeType: 'SBA', accountStatus: 'A', accountNumber: '123' }],
+                  },
+                ],
+              },
+            ],
+          },
+          mopAccessResp: {
+            cifDetails: [
+              {
+                finacleCif: [
+                  {
+                    accounts: [
+                      { accessType: 'Transact', accountStatus: 'A', accountNumber: '123' },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        creditcardCombineReducers: {
+          creditCardDashboardReducer: {
+            selectedCreditCardData: {},
+          },
+        },
+      }),
+    );
+
+    render(<CreditcardBillPaymentCASA />);
+    fireEvent.click(screen.getByLabelText(/Pay Last Bill Due/i));
+    fireEvent.click(screen.getByRole('button', { name: 'Proceed' }));
+    expect(screen.getByText(/Unauthorized/i)).toBeInTheDocument();
+  });
+
+  test('dispatches getCreditcardAccountDetailsAction on mount', () => {
+    const mockDispatch = jest.fn();
+    useDispatch.mockReturnValue(mockDispatch);
+    useSelector.mockImplementation((cb: any) =>
+      cb({
+        creditcardCombineReducers: {
+          creditCardDashboardReducer: {
+            selectedCreditCardData: {
+              crdNbr: '1111222233334444',
+            },
+          },
+        },
+      }),
+    );
+
+    render(<CreditcardBillPaymentCASA />);
+    expect(mockDispatch).toHaveBeenCalledWith({ account: '1111222233334444' });
+  });
+});
