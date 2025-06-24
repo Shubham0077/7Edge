@@ -1,16 +1,9 @@
-// src/utils/findOldestAccount.ts
-
-type Account = {
-  accountOpenDate: string;
-  [key: string]: any;
-};
-
-export function findOldestAccount(accounts: Account[]): Account | null {
+export function getOldestAccountOpenDate(accounts: { accountOpenDate: string }[]): string | null {
   if (!Array.isArray(accounts) || accounts.length === 0) return null;
 
-  return accounts.reduce((oldest, current) => {
+  return accounts.reduce((oldestDateStr, current) => {
     const currentDate = new Date(current.accountOpenDate);
-    const oldestDate = new Date(oldest.accountOpenDate);
-    return currentDate < oldestDate ? current : oldest;
-  });
+    const oldestDate = new Date(oldestDateStr);
+    return currentDate < oldestDate ? current.accountOpenDate : oldestDateStr;
+  }, accounts[0].accountOpenDate);
 }
