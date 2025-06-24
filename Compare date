@@ -1,24 +1,40 @@
-export function setLast5FinancialYearsFromOldest(
-  oldestDateStr: string,
-  setYears: React.Dispatch<React.SetStateAction<string[]>>
-): void {
-  if (!oldestDateStr) {
-    setYears([]);
-    return;
-  }
+const quarterEndDates = {
+  Q1: { month: 6, day: 30, label: "Q1 (Apr–Jun)" },
+  Q2: { month: 9, day: 30, label: "Q2 (Jul–Sep)" },
+  Q3: { month: 12, day: 31, label: "Q3 (Oct–Dec)" },
+  Q4: { month: 3, day: 31, label: "Q4 (Jan–Mar)" },
+};
 
-  const currentYear = new Date().getFullYear();
-  const oldestYear = new Date(oldestDateStr).getFullYear();
 
-  const years: string[] = [];
 
-  for (let year = oldestYear; year <= currentYear; year++) {
-    years.push(`${year}-${year + 1}`);
-  }
 
-  setYears(years.slice(-5));
+export function getAvailableQuarters(selectedFY: string): { label: string; value: string }[] {
+  const currentDate = new Date();
+  const [startYear, endYear] = selectedFY.split("-").map(Number);
+
+  const isCurrentFY =
+    currentDate.getFullYear() === Number(endYear) ||
+    (currentDate.getMonth() < 3 && currentDate.getFullYear() === Number(startYear));
+
+  const quarters: { label: string; value: string }[] = [];
+
+  Object.entries(quarterEndDates).forEach(([key, q]) => {
+    let endDate: Date;
+
+    // Q4 belongs to March, which is in endYear - for FY 2024–2025, Q4 is Mar 31, 2025
+    if (key === "Q4") {
+      endDate = new Date(endYear, q.month - 1, q.day); // Mar 31
+    } else {
+      endDate = new Date(startYear, q.month - 1, q.day); // Jun, Sep, Dec
+    }
+
+    const availableFrom = new Date(endDate);
+    availableFrom.setDate(availableFrom.getDate() + 15);
+
+    if (!isCurrentFY || availableFrom <= currentDate) {
+      quarters.push({ label: q.label, value: key });
+    }
+  });
+
+  return quarters;
 }
-
-
-
-const [financialYears, setFinancialYears] = useState<{ label: string; value: string }[]>([]);
