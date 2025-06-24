@@ -1,9 +1,15 @@
-export function getOldestAccountOpenDate(accounts: { accountOpenDate: string }[]): string | null {
-  if (!Array.isArray(accounts) || accounts.length === 0) return null;
 
-  return accounts.reduce((oldestDateStr, current) => {
-    const currentDate = new Date(current.accountOpenDate);
-    const oldestDate = new Date(oldestDateStr);
-    return currentDate < oldestDate ? current.accountOpenDate : oldestDateStr;
-  }, accounts[0].accountOpenDate);
+export function getLast5FinancialYearsFromOldest(oldestDateStr: string): string[] {
+  if (!oldestDateStr) return [];
+
+  const currentYear = new Date().getFullYear();
+  const oldestYear = new Date(oldestDateStr).getFullYear();
+
+  const years = [];
+  for (let year = oldestYear; year <= currentYear; year++) {
+    years.push(`${year}-${year + 1}`);
+  }
+
+  // Return only last 5 years (from the end)
+  return years.slice(-5);
 }
