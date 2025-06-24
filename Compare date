@@ -1,15 +1,20 @@
-
-export function getLast5FinancialYearsFromOldest(oldestDateStr: string): string[] {
-  if (!oldestDateStr) return [];
+export function setLast5FinancialYearsFromOldest(
+  oldestDateStr: string,
+  setYears: React.Dispatch<React.SetStateAction<string[]>>
+): void {
+  if (!oldestDateStr) {
+    setYears([]);
+    return;
+  }
 
   const currentYear = new Date().getFullYear();
   const oldestYear = new Date(oldestDateStr).getFullYear();
 
-  const years = [];
+  const years: string[] = [];
+
   for (let year = oldestYear; year <= currentYear; year++) {
     years.push(`${year}-${year + 1}`);
   }
 
-  // Return only last 5 years (from the end)
-  return years.slice(-5);
+  setYears(years.slice(-5));
 }
