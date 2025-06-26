@@ -1,0 +1,22 @@
+<Button
+  variant="outlined"
+  sx={{
+    backgroundColor: '#ffffff',
+    color: '#ff6f00',          // Orange text (material-like)
+    borderColor: '#ff6f00',    // Orange border
+    '&:hover': {
+      backgroundColor: '#fff', // No background fill on hover
+      color: '#e65100',        // Slightly darker orange text on hover
+      borderColor: '#e65100',
+    },
+    borderRadius: '30px',
+    px: 4,
+    py: 1.5,
+    fontWeight: 500,
+    textTransform: 'none',     // Keeps original case of text
+    boxShadow: 'none',
+  }}
+  onClick={handleGoToOverview}
+>
+  Go to Overview
+</Button>
