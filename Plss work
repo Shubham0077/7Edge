@@ -1,9 +1,9 @@
-// tests/tds/index.test.tsx
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import TdsPage from '../../../pages/serviceRequest/tds/index';
+import * as reactRedux from 'react-redux';
 
-// 👇 Mock only what we need
+// 👇 Mock both selector hooks
 jest.mock('../../../redux/hooks', () => ({
   useAppDispatch: jest.fn(),
   useAppSelector: jest.fn(),
@@ -17,53 +17,57 @@ jest.mock('../../../redux/serviceRequestSlice', () => ({
 
 const mockDispatch = jest.fn();
 
-import { useAppSelector, useAppDispatch } from '../../../redux/hooks';
-
-describe('TdsPage Component (no redux store)', () => {
+describe('TdsPage Component (no redux-mock-store)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (useAppDispatch as jest.Mock).mockReturnValue(mockDispatch);
+    const mockState = {
+      authdata: {
+        verifyPostLoginResp: {
+          cifDetails: [
+            {
+              finacleCif: [
+                {
+                  PAN: 'ABCDE1234F',
+                  phoneNumber: '9999999999',
+                  accounts: [{ accountOpenDate: '2020-01-01' }],
+                },
+              ],
+            },
+          ],
+        },
+        userProfile: {
+          countryCode: '+91',
+        },
+      },
+      serviceRequest: {
+        generateOtpData: {
+          referenceId: 'abc123',
+        },
+      },
+    };
 
-    (useAppSelector as jest.Mock).mockImplementation((selectorFn) =>
-      selectorFn({
-        authdata: {
-          verifyPostLoginResp: {
-            cifDetails: [
-              {
-                finacleCif: [
-                  {
-                    PAN: 'ABCDE1234F',
-                    phoneNumber: '9999999999',
-                    accounts: [{ accountOpenDate: '2019-04-01' }],
-                  },
-                ],
-              },
-            ],
-          },
-          userProfile: {
-            countryCode: '+91',
-          },
-        },
-        serviceRequest: {
-          generateOtpData: { referenceId: 'xyz123' },
-        },
-      })
-    );
+    // 🔁 mock `useAppDispatch` and `useAppSelector`
+    const hooks = require('../../../redux/hooks');
+    hooks.useAppDispatch.mockReturnValue(mockDispatch);
+    hooks.useAppSelector.mockImplementation((fn) => fn(mockState));
+
+    // ✅ mock built-in react-redux `useSelector` for panNumber + accounts
+    jest.spyOn(reactRedux, 'useSelector').mockImplementation((fn: any) => fn(mockState));
   });
 
-  it('renders with PAN number', () => {
+  it('renders PAN number', () => {
     const { getByText } = render(<TdsPage />);
     expect(getByText('ABCDE1234F')).toBeInTheDocument();
   });
 
-  it('calls dispatch when clicking download', () => {
+  it('calls dispatch on clicking download', () => {
     const { getByText } = render(<TdsPage />);
     fireEvent.click(getByText(/Download/i));
     expect(mockDispatch).toHaveBeenCalled();
   });
 
-  it('calls dispatch when clicking share', () => {
+  it('calls dispatch on clicking share', () => {
     const { getByText } = render(<TdsPage />);
     fireEvent.click(getByText(/Share/i));
     expect(mockDispatch).toHaveBeenCalled();
