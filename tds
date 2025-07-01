@@ -1,0 +1,427 @@
+import React, { useEffect, useState } from 'react';
+import {
+  Box,
+  Grid,
+  Typography,
+  useMediaQuery,
+  StyledEngineProvider,
+  Dialog,
+  Button,
+} from '@mui/material';
+import { INVESTMENT_APP, ThemeProvider, useLocale, hashSha256 } from 'ui';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import styles from '../../../styles/serviceRequest/ReKYC.module.css';
+import { BREAKPOINTS, OTP_CONSTANT } from '../../../utils/constants';
+import MuiDropdown from './MuiDropDown';
+import Footer from '../../../components/Footer';
+import { useRouter } from 'next/router';
+import { useSelector } from 'react-redux';
+import VerifyOtpModal from './VerifyOtpModal';
+import {
+  generateOtp,
+  validateMobileOtp,
+  downloadTdsCertificate,
+} from '../../../redux/serviceRequestSlice';
+import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
+import SuccessScreen from './SuccessScreen';
+import classes from './VerifyOTP.module.css';
+
+const TdsPage: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const locale = useLocale(useRouter().locale)?.serviceRequest;
+  const isMobile = useMediaQuery(BREAKPOINTS.MOBILE);
+  const [getYears, setGetYears] = useState<{ label: string; value: string }[]>([]);
+  const [selectedYearOption, setSelectedYearOption] = useState<string>('');
+  const [uniqueQuarterList, setUniqueQuarterList] = useState<{ label: string; value: string }[]>(
+    [],
+  );
+  const [selectedQuarterOption, setSelectedQuarterOption] = useState<string>('');
+
+  const [emailButtonDisabled, setEmailButtonDisabled] = useState<boolean>(true);
+  const [downloadButtonDisabled, setDownloadButtonDisabled] = useState<boolean>(false);
+  const [handleOTP, setHandleOTP] = useState(false);
+  const [showInvalidOTP, setShowInvalidOTP] = useState(false);
+  const [successScreen, setSuccessScreen] = useState(false);
+  const [errorScreen, setErrorScreen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [otpErrorMessage, setOtpErrorMessage] = useState<string>('');
+  const [emailBtnClicked, setEmailBtnClicked] = useState(false);
+  const handleDownload = async () => {
+    console.log('qwerry');
+    setHandleOTP(true);
+    await handleSendOTPClick();
+  };
+
+  const handleConfirmModal = () => {
+    setEmailBtnClicked(true);
+    tdsDownloadCall();
+    console.log('hiii');
+  };
+
+  // const validateIssueOtpData = useAppSelector(
+  //   (state) => state?.serviceRequest?.validateIssueOtpData,
+  // );
+
+  // const cifId = useAppSelector(
+  //   (state) => state?.authdata?.verifyPostLoginResp?.cifDetails?.[0]?.finacleCif?.[0]?.CIF,
+  // );
+
+  const generateOtpData = useAppSelector((state) => state?.serviceRequest?.generateOtpData);
+
+  const mobileNumberSliced = useAppSelector(
+    (state) => state?.authdata?.verifyPostLoginResp?.cifDetails[0]?.finacleCif[0]?.phoneNumber,
+  );
+
+  const userCountryCode = useAppSelector((state) => state?.authdata?.userProfile?.countryCode);
+
+  const panNumber = useSelector(
+    (state: any) => state?.authdata?.verifyPostLoginResp?.cifDetails?.[0]?.finacleCif?.[0]?.PAN,
+  );
+
+  const accountsPresent = useSelector(
+    (state: any) =>
+      state?.authdata?.verifyPostLoginResp?.cifDetails?.[0]?.finacleCif?.[0]?.accounts,
+  );
+
+  function getOldestAccountOpenDate(accounts: { accountOpenDate: string }[]): string | null {
+    if (!Array.isArray(accounts) || accounts.length === 0) return null;
+
+    return accounts.reduce((oldestDateStr, current) => {
+      const currentDate = new Date(current.accountOpenDate);
+      const oldestDate = new Date(oldestDateStr);
+      return currentDate < oldestDate ? current.accountOpenDate : oldestDateStr;
+    }, accounts[0].accountOpenDate);
+  }
+
+  function setLast5FinancialYearsFromOldest(
+    oldestDateStr: string,
+    setYears: React.Dispatch<React.SetStateAction<{ label: string; value: string }[]>>,
+  ): void {
+    if (!oldestDateStr) {
+      setYears([]);
+      return;
+    }
+
+    const currentYear = new Date().getFullYear();
+    const oldestYear = new Date(oldestDateStr).getFullYear();
+
+    const years: { label: string; value: string }[] = [];
+
+    for (let year = oldestYear; year <= currentYear; year++) {
+      const yearRange = `${year}-${year + 1}`;
+      years.push({ label: yearRange, value: yearRange });
+    }
+
+    setYears(years.slice(-5));
+    console.log('years', years.slice(-5));
+  }
+
+  useEffect(() => {
+    const oldestDate: any = getOldestAccountOpenDate(accountsPresent);
+    setLast5FinancialYearsFromOldest(oldestDate, setGetYears);
+  }, [accountsPresent]);
+
+  function getAvailableQuarters(selectedFY: string): { label: string; value: string }[] {
+    const currentDate = new Date();
+    const [startYear, endYear] = selectedFY.split('-').map(Number);
+
+    const isCurrentFY =
+      (currentDate.getFullYear() === startYear && currentDate.getMonth() >= 3) || // Apr–Dec
+      (currentDate.getFullYear() === endYear && currentDate.getMonth() < 3); // Jan–Mar
+
+    const quarters: { label: string; value: string }[] = [];
+
+    const quarterEndDates: Record<string, { label: string; endDate: Date }> = {
+      Q1: {
+        label: 'Quarter1',
+        endDate: new Date(startYear, 5, 30), // June 30
+      },
+      Q2: {
+        label: 'Quarter2',
+        endDate: new Date(startYear, 8, 30), // Sep 30
+      },
+      Q3: {
+        label: 'Quarter3',
+        endDate: new Date(startYear, 11, 31), // Dec 31
+      },
+      Q4: {
+        label: 'Quarter4',
+        endDate: new Date(endYear, 2, 31), // Mar 31
+      },
+    };
+
+    for (const [key, { label, endDate }] of Object.entries(quarterEndDates)) {
+      const availableFrom = new Date(endDate);
+      availableFrom.setDate(availableFrom.getDate() + 15);
+
+      if (!isCurrentFY || availableFrom <= currentDate) {
+        quarters.push({ label, value: key });
+      } else {
+        setEmailButtonDisabled(true);
+        setDownloadButtonDisabled(false);
+      }
+    }
+
+    return quarters;
+  }
+
+  const handleOptionChangeYear = (event: any) => {
+    setSelectedQuarterOption('0'); // Reset quarter selection when year changes
+    setSelectedYearOption(event.target.value);
+    console.log('Selected year:', event.target.value);
+    setUniqueQuarterList(getAvailableQuarters(event.target.value));
+  };
+
+  const handleOptionQuarterList = (event: any) => {
+    setSelectedQuarterOption(event.target.value);
+    if (event.target.value != 0 || undefined) {
+      setEmailButtonDisabled(false);
+      setDownloadButtonDisabled(true);
+    }
+    console.log('Selected quarter:', event.target.value);
+  };
+
+  const handleSendOTPClick = async () => {
+    try {
+      dispatch(
+        generateOtp({
+          channelId: OTP_CONSTANT.channelId,
+          moduleName: OTP_CONSTANT.moduleName,
+          mobileNumber: mobileNumberSliced,
+          countryCode: userCountryCode,
+          hashKey: OTP_CONSTANT.hashKey,
+          mode: OTP_CONSTANT.mode,
+          deviceId: sessionStorage.getItem('userId'),
+        }),
+      );
+    } catch (error) {
+      setHandleOTP(false);
+    }
+  };
+
+  // function to call tds cert api
+  const tdsDownloadCall = async () => {
+    try {
+      const body = {
+        operationCode: 'GET_TDS_CERTIFICATE',
+        requestTimeStamp: new Date().toISOString(),
+        requestPayload: {
+          panNumber: panNumber,
+          quarter: selectedQuarterOption,
+          year: selectedYearOption,
+          channel: 'NB',
+          pdfPassword: 'ABHI0394',
+          download: emailBtnClicked ? false : true,
+        },
+      };
+      const result1 = await dispatch(downloadTdsCertificate(body));
+      const data1 = await result1?.payload;
+      console.log('result2', data1);
+      if (data1?.returnCode === '0') {
+        setSuccessScreen(true);
+      } else if (data1?.returnCode === '1') {
+        setErrorScreen(true);
+        setErrorMessage(data1?.message);
+      }
+    } catch (error) {}
+  };
+
+  // const downloadBase64Pdf = (base64Data: string, fileName: string) => {
+  //   try {
+  //     const link = document.createElement('a');
+  //     link.href = `data:application/pdf;base64,${base64Data}`;
+  //     link.download = fileName;
+  //     document.body.appendChild(link);
+  //     link.click();
+  //     document.body.removeChild(link);
+  //   } catch (error) {
+  //     console.error('Error downloading PDF:', error);
+  //   }
+  // };
+  const handleValidateOtp = async (otp: string) => {
+    const validateOTP = {
+      otp: hashSha256(otp),
+      channelId: OTP_CONSTANT.channelId,
+      sessionId: generateOtpData?.referenceId,
+    };
+    const result = await dispatch(validateMobileOtp(validateOTP));
+    const data = await result?.payload;
+    console.log('result11', data);
+    if (data?.status == 200) {
+      setHandleOTP(false);
+      tdsDownloadCall(); // Tds certificate download calling
+      //setSuccessScreen(true);
+      // const router = useRouter();
+      // router.push('/serviceRequest/tds/success');
+    } else if (data?.status == 400) {
+      // otp failure
+      setShowInvalidOTP(true);
+      setOtpErrorMessage(data?.responseMessage);
+    }
+  };
+
+  return (
+    <ThemeProvider>
+      <StyledEngineProvider injectFirst>
+        <>
+          {!errorScreen && (
+            <Grid
+              data-testid="tds-page"
+              className={`${styles.outergrid} ${isMobile && styles.outergridmobile}`}
+            >
+              <Box className={styles?.HeaderBOX}>
+                <ArrowBackIcon
+                  data-testid="arrow-back-btn"
+                  //onClick={() => handleback(router)}
+                  className={styles?.ArrowBack}
+                />
+                <Typography data-testid="name" className={styles.positivetypo}>
+                  Download TDS Certificate
+                </Typography>
+              </Box>
+              <Grid className={styles.Wrapper}>
+                <Grid className={styles.FirstGridXYZ}>
+                  <Typography>IMG</Typography>
+                  <Grid className={styles.FirstGrid}>
+                    <Typography className={styles.CustTitle}>PAN</Typography>
+                    <Typography className={styles.CustContent}>{panNumber}</Typography>
+                  </Grid>
+                </Grid>
+                <hr className={styles.Line}></hr>
+                <Grid container mb={10} sx={{ ml: '1.6em' }}>
+                  <Grid item xs={12} mb={3}>
+                    <Typography className={styles.HeaderText}>
+                      Please select the required details for generating TDS Certificate
+                    </Typography>
+                  </Grid>
+                  <Grid container item xs={12} spacing={3}>
+                    <Grid item xs={3}>
+                      <MuiDropdown
+                        disabled={false}
+                        data={getYears}
+                        headerText="Financial Year *"
+                        onChange={handleOptionChangeYear}
+                        value={selectedYearOption}
+                        placeholder="Financial Year *"
+                      />
+                    </Grid>
+                    <Grid item xs={3}>
+                      <MuiDropdown
+                        data={uniqueQuarterList}
+                        headerText="Select Quarter *"
+                        onChange={handleOptionQuarterList}
+                        value={selectedQuarterOption}
+                        placeholder="Select Quarter *"
+                        disabled={uniqueQuarterList.length === 0}
+                      />
+                    </Grid>
+                  </Grid>
+                </Grid>
+              </Grid>
+            </Grid>
+          )}
+          {errorScreen && (
+            <Grid
+              data-testid="tds-page"
+              className={`${styles.outergrid} ${isMobile && styles.outergridmobile}`}
+            >
+              <Box className={styles?.HeaderBOX}>
+                <ArrowBackIcon
+                  data-testid="arrow-back-btn"
+                  //onClick={() => handleback(router)}
+                  className={styles?.ArrowBack}
+                />
+                <Typography data-testid="name" className={styles.positivetypo}>
+                  Download TDS Certificate
+                </Typography>
+              </Box>
+              <Grid>
+                <Grid
+                  container
+                  mb={10}
+                  sx={{ ml: '1.6em', height: '200px', mt: '6em' }}
+                  justifyContent="center"
+                  alignItems="center"
+                >
+                  <Grid item>
+                    <div style={{ textAlign: 'center' }}>
+                      <Box onClick={() => false}>
+                        <img src={INVESTMENT_APP.FAILED_RESPONSE_ICON} alt="img" />
+                      </Box>
+                      <Typography data-testid="name" className={styles.positivetypo}>
+                        Request Failed !
+                      </Typography>
+                      <Typography className={styles.smallerFont}>{errorMessage}</Typography>
+                      <Grid className={classes.OuterRow}>
+                        <Button
+                          data-testid="submitotpButton"
+                          //className={classes.ButtonGridOverview}
+                          variant="outlined"
+                          sx={{
+                            color: 'red',
+                            borderColor: 'red',
+                            borderRadius: '30px',
+                            marginTop: '1em',
+                            height: '3em',
+                            width: '11.75rem',
+                          }}
+                          //  onClick={handleButtonClick}
+                        >
+                          <Typography className={classes.Label1}>Go to Overview</Typography>
+                        </Button>
+                        <Button
+                          data-testid="submitotpButton"
+                          className={classes.ButtonGridOverview}
+                          //  onClick={handleButtonClick}
+                        >
+                          <Typography className={classes.Label}>Retry</Typography>
+                        </Button>
+                      </Grid>
+                    </div>
+                  </Grid>
+                </Grid>
+              </Grid>
+            </Grid>
+          )}
+        </>
+      </StyledEngineProvider>
+      <Footer
+        label={locale?.DOWNLOAD}
+        onClick={handleDownload}
+        showTerms={false}
+        isRadioSelected={downloadButtonDisabled} // this is responsible for disabling of download button
+        disableEmailButton={emailButtonDisabled} // this is responsible for disabling of email button
+        LeftLabel={locale?.SHARE}
+        leftLabelClick={() => handleConfirmModal()}
+      />
+      {handleOTP && (
+        <Dialog open={handleOTP} onClose={() => setHandleOTP(false)}>
+          <VerifyOtpModal
+            locale={locale}
+            open={handleOTP}
+            handleClose={() => setHandleOTP(false)}
+            handleclickBack={handleValidateOtp}
+            handleSendOTPClick={handleSendOTPClick}
+            errorMessage={otpErrorMessage}
+            showInvalidOTP={showInvalidOTP}
+            setShowInvalidOTP={setShowInvalidOTP}
+            instrumentName={''}
+            email_id={'a@b.com'}
+            phone={mobileNumberSliced}
+            blockingAmount={0}
+            titleTxt={'Verify via otp'}
+          />
+        </Dialog>
+      )}
+      <SuccessScreen
+        applicationReferenceNumber={
+          'Password format for PDF : XXXXDDMM(XXXX = First Four characters of customer name as per Bank Records, DDMM = Date of birth of customer as per Bank)'
+        }
+        successScreen={successScreen}
+        setSuccessScreen={setSuccessScreen}
+        emailBtnClicked={emailBtnClicked}
+      />
+    </ThemeProvider>
+  );
+};
+export default TdsPage;
