@@ -1,9 +1,31 @@
-jest.mock('ui', () => ({
-  ...jest.requireActual('ui'),
-  useLocale: () => ({
+(useAppSelector as jest.Mock).mockImplementation((selector) =>
+  selector({
+    ...mockState,
     serviceRequest: {
-      DOWNLOAD: 'Download',
-      SHARE: 'Share',
+      generateOtpData: { referenceId: 'xyz123' },
+      getYears: [{ label: '2023-2024', value: '2023-2024' }],
+      uniqueQuarterList: [{ label: 'Quarter1', value: 'Q1' }],
     },
-  }),
-}));
+  })
+);
+
+
+test('dispatches when both dropdowns are selected and Download is clicked', async () => {
+  const { getByTestId, getAllByRole } = render(<TdsPage />);
+
+  // select dropdowns
+  const dropdowns = getAllByRole('combobox');
+  const [yearDropdown, quarterDropdown] = dropdowns;
+
+  fireEvent.change(yearDropdown, { target: { value: '2023-2024' } });
+  fireEvent.change(quarterDropdown, { target: { value: 'Q1' } });
+
+  // Click after both dropdowns selected
+  const downloadBtn = getByTestId('download-button');
+  fireEvent.click(downloadBtn);
+
+  await waitFor(() => {
+    expect(mockDispatch).toHaveBeenCalled();
+  });
+});
+
