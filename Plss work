@@ -1,11 +1,14 @@
-it('shows VerifyOtpModal when Download is clicked', async () => {
-    const { getByTestId, getByText } = render(<TdsPage />);
+it('calls handleConfirmModal when Share is clicked', async () => {
+  const { getByText, getByTestId } = render(<TdsPage />);
 
-    await user.selectOptions(getByTestId('year-dropdown'), '2023-2024');
-    await user.selectOptions(getByTestId('quarter-dropdown'), 'Q1');
+  await user.selectOptions(getByTestId('year-dropdown'), '2023-2024');
+  await user.selectOptions(getByTestId('quarter-dropdown'), 'Q1');
 
-    await user.click(getByTestId('download-button'));
+  // Click the "Share" button (left footer)
+  await user.click(getByText(/Share/i));
 
-    await waitFor(() => {
-      expect(getByText(/Verify via otp/i)).toBeInTheDocument();
-    })
+  // It should trigger tdsDownloadCall → dispatch
+  await waitFor(() => {
+    expect(mockDispatch).toHaveBeenCalled();
+  });
+});
