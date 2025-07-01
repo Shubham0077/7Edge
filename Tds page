@@ -1,0 +1,15 @@
+useEffect(() => {
+  const forceError = () => setErrorScreen(true);
+  const forceSuccess = () => setSuccessScreen(true);
+  const forceOtp = () => setHandleOTP(true);
+
+  window.addEventListener('force-error', forceError);
+  window.addEventListener('force-success', forceSuccess);
+  window.addEventListener('force-otp', forceOtp);
+
+  return () => {
+    window.removeEventListener('force-error', forceError);
+    window.removeEventListener('force-success', forceSuccess);
+    window.removeEventListener('force-otp', forceOtp);
+  };
+}, []);
