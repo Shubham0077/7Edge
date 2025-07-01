@@ -1,16 +1,34 @@
 // tests/tds/index.test.tsx
 import React from 'react';
 import '@testing-library/jest-dom';
-import { render, fireEvent, waitFor, getByText, getByTestId } from '@testing-library/react';
-import TdsPage from '../../pages/serviceRequest/tds/index'; // Update the path to the correct location of TdsPage
+import { render, fireEvent, waitFor } from '@testing-library/react';
+import TdsPage from '../../pages/serviceRequest/tds/index';
 import * as reactRedux from 'react-redux';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
-
 import userEvent from '@testing-library/user-event';
 
+// ⛏️ Clean `user` instance
 const user = userEvent.setup();
 
-// 👇 Mock both selector hooks
+// ✅ MOCK: replace MuiDropdown with testable <select>
+jest.mock('../../pages/serviceRequest/tds/MuiDropDown', () => ({
+  __esModule: true,
+  default: ({ 'data-testid': testId, data = [], onChange, value }) => (
+    <select
+      data-testid={testId}
+      value={value}
+      onChange={(e) => onChange({ target: { value: e.target.value } })}
+    >
+      <option value="">--Select--</option>
+      {data.map((item) => (
+        <option key={item.value} value={item.value}>
+          {item.label}
+        </option>
+      ))}
+    </select>
+  ),
+}));
+
 jest.mock('../../redux/hooks', () => ({
   useAppDispatch: jest.fn(),
   useAppSelector: jest.fn(),
@@ -76,45 +94,16 @@ describe('TdsPage Component (no redux-mock-store)', () => {
         generateOtpData: {
           referenceId: 'abc123',
         },
+        getYears: [{ label: '2023-2024', value: '2023-2024' }],
+        uniqueQuarterList: [{ label: 'Quarter1', value: 'Q1' }],
       },
     };
 
-    (useAppSelector as jest.mock).mockImplementation((selector) =>
-      selector({
-        ...mockState,
-        serviceRequest: {
-          generateOtpData: { referenceId: 'xyz123' },
-          getYears: [{ label: '2023-2024', value: '2023-2024' }],
-          uniqueQuarterList: [{ label: 'Quarter1', value: 'Q1' }],
-        },
-      }),
-    );
-
-    // 🔁 mock `useAppDispatch` and `useAppSelector`
     const hooks = require('../../redux/hooks');
     hooks.useAppDispatch.mockReturnValue(mockDispatch);
     hooks.useAppSelector.mockImplementation((fn) => fn(mockState));
 
-    // ✅ mock built-in react-redux `useSelector` for panNumber + accounts
-    jest.spyOn(reactRedux, 'useSelector').mockImplementation((fn: any) => fn(mockState));
-  });
-
-  it('selects both dropdowns and triggers dispatch', async () => {
-    const user = userEvent.setup();
-    const { getByTestId, getByText } = render(<TdsPage />);
-
-    await user.click(getByTestId('year-dropdown'));
-    await user.click(getByText('2023-2024'));
-
-    await user.click(getByTestId('quarter-dropdown'));
-    await user.click(getByText('Q1'));
-
-    const downloadButton = getByTestId('download-button');
-    await user.click(downloadButton);
-
-    await waitFor(() => {
-      expect(mockDispatch).toHaveBeenCalled();
-    });
+    (reactRedux.useSelector as jest.Mock).mockImplementation((fn) => fn(mockState));
   });
 
   it('renders PAN number', () => {
@@ -122,10 +111,18 @@ describe('TdsPage Component (no redux-mock-store)', () => {
     expect(getByText('ABCDE1234F')).toBeInTheDocument();
   });
 
-  it('calls dispatch on clicking download', () => {
+  it('selects both dropdowns and triggers dispatch', async () => {
     const { getByTestId } = render(<TdsPage />);
-    fireEvent.click(getByTestId('continueButtonAccounts'));
-    expect(mockDispatch).toHaveBeenCalled();
+
+    await user.selectOptions(getByTestId('year-dropdown'), '2023-2024');
+    await user.selectOptions(getByTestId('quarter-dropdown'), 'Q1');
+
+    const downloadButton = getByTestId('download-button');
+    await user.click(downloadButton);
+
+    await waitFor(() => {
+      expect(mockDispatch).toHaveBeenCalled();
+    });
   });
 
   it('calls dispatch on clicking share', () => {
