@@ -1,114 +1,11 @@
-import React from 'react';
-import '@testing-library/jest-dom';
-import { render, waitFor } from '@testing-library/react';
-import TdsPage from '../../pages/serviceRequest/tds/index';
-import userEvent from '@testing-library/user-event';
-import * as reactRedux from 'react-redux';
-import { useAppDispatch, useAppSelector } from '../../redux/hooks';
-
-// ✅ Mock <MuiDropdown /> with a testable <select>
-jest.mock('../../pages/serviceRequest/tds/MuiDropDown', () => ({
-  __esModule: true,
-  default: ({ 'data-testid': testId, data = [], onChange, value }) => (
-    <select
-      data-testid={testId}
-      value={value}
-      onChange={(e) => onChange({ target: { value: e.target.value } })}
-    >
-      <option value="">--Select--</option>
-      {data.map((item) => (
-        <option key={item.value} value={item.value}>
-          {item.label}
-        </option>
-      ))}
-    </select>
-  ),
-}));
-
-jest.mock('../../redux/hooks', () => ({
-  useAppDispatch: jest.fn(),
-  useAppSelector: jest.fn(),
-}));
-
-jest.mock('ui', () => ({
-  ...jest.requireActual('ui'),
-  useLocale: () => ({
-    serviceRequest: {
-      DOWNLOAD: 'Download',
-      SHARE: 'Share',
-    },
-  }),
-}));
-
-jest.mock('next/router', () => ({
-  useRouter: jest.fn(() => ({
-    locale: 'en',
-  })),
-}));
-
-jest.mock('react-redux', () => ({
-  useSelector: jest.fn(),
-  useDispatch: jest.fn(() => jest.fn()),
-}));
-
-jest.mock('../../redux/serviceRequestSlice', () => ({
-  generateOtp: jest.fn(),
-  validateMobileOtp: jest.fn(),
-  downloadTdsCertificate: jest.fn(),
-}));
-
-jest.mock('jose', () => ({ jose: jest.fn() }));
-
-const mockDispatch = jest.fn();
-
-describe('TdsPage Component - Dropdown Selection & Dispatch', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-
-    const mockState = {
-      authdata: {
-        verifyPostLoginResp: {
-          cifDetails: [
-            {
-              finacleCif: [
-                {
-                  PAN: 'ABCDE1234F',
-                  phoneNumber: '9999999999',
-                  accounts: [{ accountOpenDate: '2018-04-01' }],
-                },
-              ],
-            },
-          ],
-        },
-        userProfile: {
-          countryCode: '+91',
-        },
-      },
-      serviceRequest: {
-        generateOtpData: { referenceId: 'abc123' },
-      },
-    };
-
-    const hooks = require('../../redux/hooks');
-    hooks.useAppDispatch.mockReturnValue(mockDispatch);
-    hooks.useAppSelector.mockImplementation((fn) => fn(mockState));
-
-    (reactRedux.useSelector as jest.Mock).mockImplementation((fn) => fn(mockState));
-  });
-
-  it('selects both dropdowns and dispatches download', async () => {
-    const user = userEvent.setup();
-
-    const { getByTestId } = render(<TdsPage />);
+it('shows VerifyOtpModal when Download is clicked', async () => {
+    const { getByTestId, getByText } = render(<TdsPage />);
 
     await user.selectOptions(getByTestId('year-dropdown'), '2023-2024');
     await user.selectOptions(getByTestId('quarter-dropdown'), 'Q1');
 
-    const downloadButton = getByTestId('download-button');
-    await user.click(downloadButton);
+    await user.click(getByTestId('download-button'));
 
     await waitFor(() => {
-      expect(mockDispatch).toHaveBeenCalled();
-    });
-  });
-});
+      expect(getByText(/Verify via otp/i)).toBeInTheDocument();
+    })
