@@ -1,17 +1,28 @@
-it('dispatches when both dropdowns are selected and Download is clicked', async () => {
-  const { getByTestId } = render(<TdsPage />);
+import userEvent from '@testing-library/user-event';
 
-  const yearDropdown = getByTestId('year-dropdown');
-  const quarterDropdown = getByTestId('quarter-dropdown');
+const user = userEvent.setup();
 
-  fireEvent.change(yearDropdown, { target: { value: '2023-2024' } });
-  fireEvent.change(quarterDropdown, { target: { value: 'Q1' } });
+await user.click(getByTestId('year-dropdown')); // open dropdown
+await user.click(getByText('2023-2024'));       // select option
+
+
+
+import userEvent from '@testing-library/user-event';
+
+it('selects both dropdowns and triggers dispatch', async () => {
+  const user = userEvent.setup();
+  const { getByTestId, getByText } = render(<TdsPage />);
+
+  await user.click(getByTestId('year-dropdown'));
+  await user.click(getByText('2023-2024'));
+
+  await user.click(getByTestId('quarter-dropdown'));
+  await user.click(getByText('Q1'));
 
   const downloadButton = getByTestId('download-button');
-  fireEvent.click(downloadButton);
+  await user.click(downloadButton);
 
   await waitFor(() => {
     expect(mockDispatch).toHaveBeenCalled();
   });
 });
-
