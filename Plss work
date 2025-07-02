@@ -15,3 +15,26 @@ test('executes handleDateSelect by changing date', async () => {
     expect(input).toHaveValue('02/07/2025');
   });
 });
+
+
+import dayjs from 'dayjs';
+
+test('executes handleDateSelect by simulating calendar selection', async () => {
+  const { getByTestId } = render(
+    <MockReduxProvider>
+      <ViewManageBillingCycle />
+    </MockReduxProvider>
+  );
+
+  const input = getByTestId('date-picker');
+
+  // Simulate selecting a date using Dayjs object (this triggers onChange)
+  fireEvent.change(input, {
+    target: { value: dayjs('2025-07-02') }, // triggers your handleDateSelect(date)
+  });
+
+  await waitFor(() => {
+    // We check that input contains formatted date set by handleDateSelect()
+    expect(input).toHaveValue('02/07/2025'); // or adjust per your DATE_FORMAT
+  });
+});
