@@ -1,64 +1,19 @@
-test('handleDatePickerOpen sets minDate and maxDate', async () => {
-  const { getByTestId } = render(
+test('triggers handleDateSelect by changing the date', async () => {
+  const user = userEvent.setup();
+
+  render(
     <MockReduxProvider>
       <ViewManageBillingCycle />
     </MockReduxProvider>
   );
 
-  const datePicker = getByTestId('date-picker');
+  const input = screen.getByTestId('date-picker');
+  await user.clear(input);
 
-  // Trigger DatePicker open event
-  fireEvent.focus(datePicker);
+  // Match the expected DATE_FORMAT (like 'DD/MM/YYYY' or 'MM/DD/YYYY')
+  await user.type(input, '02/07/2025'); 
 
-  // Wait for minDate/maxDate state changes (no visible DOM check, just Sonar coverage)
   await waitFor(() => {
-    expect(true).toBe(true); // placeholder to flush event loop
-  });
-});
-
-
-
-
-
-import dayjs from 'dayjs';
-
-test('datesEnabled returns correct value and covers all date checks', () => {
-  // clone logic from the component
-  const datesEnabled = (dateOnly: dayjs.Dayjs) => {
-    const dayjsDate = dayjs(dateOnly);
-    const jsDate: Date = dayjsDate.toDate();
-    const date = new Date(jsDate);
-
-    let currMonth = dayjs().month() + 2;
-    let currYear = dayjs().year();
-
-    const date3 = new Date(`${currMonth}-03-${currYear}`);
-    const date5 = new Date(`${currMonth}-05-${currYear}`);
-    const date8 = new Date(`${currMonth}-08-${currYear}`);
-    const date12 = new Date(`${currMonth}-12-${currYear}`);
-    const date15 = new Date(`${currMonth}-15-${currYear}`);
-    const date18 = new Date(`${currMonth}-18-${currYear}`);
-
-    return (
-      (date < date3 || date > date5) &&
-      (date < date8 || date > date8) &&
-      (date < date12 || date > date12) &&
-      (date < date15 || date > date15) &&
-      (date < date18 || date > date18)
-    );
-  };
-
-  // test all boundary dates
-  const datesToTest = [
-    '2025-03-01',
-    '2025-05-04',
-    '2025-08-08',
-    '2025-12-12',
-    '2025-12-18',
-  ];
-
-  datesToTest.forEach((d) => {
-    const result = datesEnabled(dayjs(d));
-    expect(typeof result).toBe('boolean'); // to cover branches
+    expect(input).toHaveValue('02/07/2025'); // adjust if needed
   });
 });
