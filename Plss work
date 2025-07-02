@@ -1,29 +1,39 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CreditcardBillPaymentCASA from '../../pages/CreditcardBillPaymentCASA';
+import CreditcardBillPaymentCASA from '../../pages/CreditcardBillPaymentCASA'; // Update path
 import MockReduxProvider from '../../utils/MockReduxProvider';
 
-test('selecting CUSTOM_AMOUNT_DUE renders the input field', async () => {
-  const user = userEvent.setup();
+describe('onChangeCustomAmount behavior', () => {
+  it('renders input and enables Proceed button for valid custom amount', async () => {
+    const user = userEvent.setup();
 
-  render(
-    <MockReduxProvider>
-      <CreditcardBillPaymentCASA />
-    </MockReduxProvider>
-  );
+    render(
+      <MockReduxProvider>
+        <CreditcardBillPaymentCASA />
+      </MockReduxProvider>
+    );
 
-  // Find all radio buttons
-  const radios = screen.getAllByRole('radio');
+    // ✅ Find all radio buttons
+    const radios = screen.getAllByRole('radio');
 
-  // Find the radio with value "CUSTOM_AMOUNT_DUE"
-  const customRadio = radios.find(
-    (radio) => radio.getAttribute('value') === 'CUSTOM_AMOUNT_DUE'
-  );
+    // ✅ Select the radio with value="CUSTOM_AMOUNT_DUE"
+    const customRadio = radios.find(
+      (radio) => radio.getAttribute('value') === 'CUSTOM_AMOUNT_DUE'
+    );
+    expect(customRadio).toBeDefined();
+    await user.click(customRadio!);
 
-  expect(customRadio).toBeDefined();
-  await user.click(customRadio!);
+    // ✅ Wait for the conditional input field to appear
+    const inputWrapper = await screen.findByTestId('custom-amount-due');
+    expect(inputWrapper).toBeInTheDocument();
 
-  // Confirm the custom-amount-due input now appears
-  const wrapper = await screen.findByTestId('custom-amount-due');
-  expect(wrapper).toBeInTheDocument();
+    // ✅ Type a valid custom amount (100)
+    const input = inputWrapper.querySelector('input')!;
+    await user.clear(input);
+    await user.type(input, '100');
+
+    // ✅ Proceed button should now be enabled
+    const proceed = screen.getByText(/proceed/i).closest('button');
+    expect(proceed).not.toBeDisabled();
+  });
 });
