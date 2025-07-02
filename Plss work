@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event';
 import CreditcardBillPaymentCASA from '../../pages/CreditcardBillPaymentCASA';
 import MockReduxProvider from '../../utils/MockReduxProvider';
 
-describe('onChangeCustomAmount', () => {
-  it('enables confirm button when valid custom amount is entered', async () => {
+describe('onChangeCustomAmount behavior', () => {
+  it('enables Proceed button for valid custom amount', async () => {
     const user = userEvent.setup();
 
     render(
@@ -13,18 +13,19 @@ describe('onChangeCustomAmount', () => {
       </MockReduxProvider>
     );
 
-    const customRadio = screen.getByDisplayValue('CUSTOM_AMOUNT_DUE');
+    const customRadio = screen.getByLabelText(/custom amount/i);
     await user.click(customRadio);
 
-    const input = screen.getByTestId('custom-amount-due').querySelector('input')!;
+    const inputWrapper = await screen.findByTestId('custom-amount-due');
+    const input = inputWrapper.querySelector('input')!;
     await user.clear(input);
     await user.type(input, '100');
 
-    const proceed = screen.getByText(/Proceed/i).closest('button');
+    const proceed = screen.getByText(/proceed/i).closest('button');
     expect(proceed).not.toBeDisabled();
   });
 
-  it('disables confirm button and shows error for invalid high amount', async () => {
+  it('disables Proceed and shows error for high amount', async () => {
     const user = userEvent.setup();
 
     render(
@@ -33,22 +34,22 @@ describe('onChangeCustomAmount', () => {
       </MockReduxProvider>
     );
 
-    const customRadio = screen.getByDisplayValue('CUSTOM_AMOUNT_DUE');
+    const customRadio = screen.getByLabelText(/custom amount/i);
     await user.click(customRadio);
 
-    const input = screen.getByTestId('custom-amount-due').querySelector('input')!;
+    const inputWrapper = await screen.findByTestId('custom-amount-due');
+    const input = inputWrapper.querySelector('input')!;
     await user.clear(input);
-    await user.type(input, '999999'); // > totCrlim
+    await user.type(input, '999999');
 
-    const proceed = screen.getByText(/Proceed/i).closest('button');
+    const proceed = screen.getByText(/proceed/i).closest('button');
     expect(proceed).toBeDisabled();
 
-    // Optional: assert error message appears
-    const errorText = screen.getByText(/Min/i); // based on locale?.MIN
+    const errorText = screen.getByText(/min/i); // matches "Min : 1, Max : ..."
     expect(errorText).toBeInTheDocument();
   });
 
-  it('disables confirm button for empty custom amount', async () => {
+  it('disables Proceed for empty input', async () => {
     const user = userEvent.setup();
 
     render(
@@ -57,13 +58,14 @@ describe('onChangeCustomAmount', () => {
       </MockReduxProvider>
     );
 
-    const customRadio = screen.getByDisplayValue('CUSTOM_AMOUNT_DUE');
+    const customRadio = screen.getByLabelText(/custom amount/i);
     await user.click(customRadio);
 
-    const input = screen.getByTestId('custom-amount-due').querySelector('input')!;
+    const inputWrapper = await screen.findByTestId('custom-amount-due');
+    const input = inputWrapper.querySelector('input')!;
     await user.clear(input);
 
-    const proceed = screen.getByText(/Proceed/i).closest('button');
+    const proceed = screen.getByText(/proceed/i).closest('button');
     expect(proceed).toBeDisabled();
   });
 });
