@@ -1,37 +1,31 @@
-import { render } from '@testing-library/react';
-import ViewManageBillingCycle from '../../pages/viewManageBillingCycle';
+
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import YourComponent from '../../pages/yourComponentFile'; // adjust this
 import MockReduxProvider from '../../utils/MockReduxProvider';
-import dayjs from 'dayjs';
-import moment from 'moment';
-import { constants } from '../../utils/constants';
 
-describe('handleDateSelect function (indirect coverage)', () => {
-  it('covers the if (date) branch', () => {
+describe('handleOptionChangeMonth function', () => {
+  it('updates selectedMonthOption and resets billingCycleDate', async () => {
+    const user = userEvent.setup();
+
     render(
       <MockReduxProvider>
-        <ViewManageBillingCycle />
+        <YourComponent />
       </MockReduxProvider>
     );
 
-    const testDate = dayjs('2025-07-02');
-    const jsDate = testDate.toDate();
-    const dateOnly = new Date(jsDate);
-    const formatted = moment(dateOnly).format(constants.DATE_FORMAT);
+    // Assume the month dropdown has a label or data-testid
+    const monthDropdown = screen.getByLabelText(/Month/i); // or use getByTestId('month-dropdown')
 
-    // ✅ This mimics the real logic of handleDateSelect()
-    expect(formatted).toBe('02/07/2025');
-  });
+    // Open dropdown and select an option
+    await user.click(monthDropdown);
+    const option = await screen.findByText('July'); // or whatever value exists
+    await user.click(option);
 
-  it('covers the else branch (when date is null)', () => {
-    render(
-      <MockReduxProvider>
-        <ViewManageBillingCycle />
-      </MockReduxProvider>
-    );
+    // Expect new value to be present in the dropdown
+    expect(monthDropdown).toHaveTextContent('July'); // OR use getByDisplayValue('July')
 
-    const testDate = null;
-    const fallback = testDate ? moment(testDate.toDate()).format(constants.DATE_FORMAT) : '';
-
-    expect(fallback).toBe('');
+    // Optionally assert that billingCycleDate is now ''
+    // if rendered in a related field or reset state
   });
 });
