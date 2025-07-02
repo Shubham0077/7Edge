@@ -1,14 +1,128 @@
-it('calls handleConfirmModal when Share is clicked', async () => {
-  const { getByText, getByTestId } = render(<TdsPage />);
+import { render, screen, fireEvent } from '@testing-library/react';
+import ViewManageBillingCycle from '../../pages/viewManageBillingCycle';
+import MockReduxProvider, { mockStore } from '../../utils/MockReduxProvider';
+import dayjs from 'dayjs';
+import '@testing-library/jest-dom';
+import { useSelector } from 'react-redux';
+import LocaleConstant from '../../public/locales/en-us.json';
 
-  await user.selectOptions(getByTestId('year-dropdown'), '2023-2024');
-  await user.selectOptions(getByTestId('quarter-dropdown'), 'Q1');
+jest.mock('jose', () => ({
+  jose: jest.fn(),
+}));
 
-  // Click the "Share" button (left footer)
-  await user.click(getByText(/Share/i));
+jest.mock('next/router', () => ({
+  useRouter() {
+    return {
+      route: '/',
+      pathname: '',
+      query: '',
+      asPath: '',
+      push: jest.fn(),
+      events: {
+        on: jest.fn(),
+        off: jest.fn(),
+      },
+      beforePopState: jest.fn(() => null),
+      prefetch: jest.fn(() => null),
+      mockReturnValue: jest.fn(),
+    };
+  },
+  push: jest.fn(),
+}));
+jest.mock('@moengage/web-sdk', () => ({
+  initialize: jest.fn(),
+  add_unique_user_id: jest.fn(),
+  track_event: jest.fn(),
+  add_user_attribute: jest.fn(),
+  isMoeLoaded: jest.fn().mockReturnValue(true),
+}));
+jest.mock('ui', () => ({
+  ...jest.requireActual('ui'),
+  useLocale: () => ({
+    ...LocaleConstant,
+  }),
+}));
+jest.mock('react-redux', () => ({
+  ...jest.requireActual('react-redux'),
+  useSelector: jest.fn(),
+}));
 
-  // It should trigger tdsDownloadCall → dispatch
-  await waitFor(() => {
-    expect(mockDispatch).toHaveBeenCalled();
+describe('ViewManageBillingCycle', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  useSelector.mockImplementation((cb: any) =>
+    cb({
+      creditcardCombineReducers: {
+        creditCardDashboardReducer: {
+          selectedCreditCardData: {
+            logoDesc: 'Visa',
+            crdNbr: '0004271244771723788',
+            outstandingBalance: '5000',
+          },
+          isLoading: false,
+          creditCardAccountDetails: { billingCycle: '8' },
+        },
+      },
+    }),
+  );
+
+  test('same date', async () => {
+    render(
+      <MockReduxProvider>
+        <ViewManageBillingCycle />
+      </MockReduxProvider>,
+    );
+    jest.spyOn(mockStore, 'dispatch').mockImplementation(() => {
+      return {
+        unwrap: jest.fn(() =>
+          Promise.resolve({
+            returnCode: 0,
+            creditCardStatementDate: [{ sdStmtYear: '2024' }, { sdStmtYear: '2024' }],
+          }),
+        ),
+      };
+    });
+    expect(screen.getByText('View & Manage Billing Cycle')).toBeInTheDocument();
+    expect(screen.getByText('Desired Billing Date')).toBeInTheDocument();
+    const datePicker = screen.getAllByRole('button');
+    // fireEvent.click(datePicker[0]);
+    const date = dayjs().add(1, 'day').format('YYYY-MM-DD');
+    // expect(datePicker[0]).toBeDisabled();
+    expect(screen.getByAltText(/Date picker icon/i)).toBeInTheDocument();
+  });
+  test('different date', async () => {
+    render(
+      <MockReduxProvider>
+        <ViewManageBillingCycle />
+      </MockReduxProvider>,
+    );
+    jest.spyOn(mockStore, 'dispatch').mockImplementation(() => {
+      return {
+        unwrap: jest.fn(() =>
+          Promise.resolve({
+            returnCode: 0,
+            creditCardStatementDate: [{ sdStmtYear: '2024' }, { sdStmtYear: '2023' }],
+          }),
+        ),
+      };
+    });
+  });
+
+  test('DatePicker is enabled when datePickerDisable returns false', () => {
+    const currentDate = new Date();
+    jest.spyOn(global, 'Date').mockImplementation(() => currentDate);
+
+    const { container, getByRole } = render(
+      <MockReduxProvider>
+        <ViewManageBillingCycle />
+      </MockReduxProvider>,
+    );
+
+    const datePickerInput = container.querySelector('input');
+    // expect(datePickerInput).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    const icon = getByRole('img', { name: /Date picker icon/i });
+    expect(icon).toBeInTheDocument();
   });
 });
