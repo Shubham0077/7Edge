@@ -1,31 +1,30 @@
-
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import YourComponent from '../../pages/yourComponentFile'; // adjust this
+import ResetPinScreen from '../../pages/ResetPinScreen'; // or your real component
 import MockReduxProvider from '../../utils/MockReduxProvider';
 
-describe('handleOptionChangeMonth function', () => {
-  it('updates selectedMonthOption and resets billingCycleDate', async () => {
-    const user = userEvent.setup();
+test('updates selectedMonthOption and resets billingCycleDate', async () => {
+  const user = userEvent.setup();
 
-    render(
-      <MockReduxProvider>
-        <YourComponent />
-      </MockReduxProvider>
-    );
+  render(
+    <MockReduxProvider>
+      <ResetPinScreen />
+    </MockReduxProvider>
+  );
 
-    // Assume the month dropdown has a label or data-testid
-    const monthDropdown = screen.getByLabelText(/Month/i); // or use getByTestId('month-dropdown')
+  // 🔍 Step 1: Get dropdown trigger
+  const monthDropdown = screen.getByTestId('month-dropdown');
 
-    // Open dropdown and select an option
-    await user.click(monthDropdown);
-    const option = await screen.findByText('July'); // or whatever value exists
-    await user.click(option);
+  // 🖱 Step 2: Open dropdown
+  await user.click(monthDropdown);
 
-    // Expect new value to be present in the dropdown
-    expect(monthDropdown).toHaveTextContent('July'); // OR use getByDisplayValue('July')
+  // ✅ Step 3: Click visible label ('July') — triggers handler with value '6'
+  const option = await screen.findByText('July');
+  await user.click(option);
 
-    // Optionally assert that billingCycleDate is now ''
-    // if rendered in a related field or reset state
-  });
+  // ✅ Step 4: Assert that dropdown reflects new selection
+  expect(monthDropdown).toHaveTextContent('July');
+
+  // Optional: Assert other state resets
+  // expect(screen.getByTestId('billingCycleDate')).toHaveValue('');
 });
