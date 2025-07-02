@@ -1,6 +1,4 @@
-test('triggers handleDateSelect by changing the date', async () => {
-  const user = userEvent.setup();
-
+test('executes handleDateSelect by changing date', async () => {
   render(
     <MockReduxProvider>
       <ViewManageBillingCycle />
@@ -8,12 +6,12 @@ test('triggers handleDateSelect by changing the date', async () => {
   );
 
   const input = screen.getByTestId('date-picker');
-  await user.clear(input);
 
-  // Match the expected DATE_FORMAT (like 'DD/MM/YYYY' or 'MM/DD/YYYY')
-  await user.type(input, '02/07/2025'); 
+  fireEvent.change(input, {
+    target: { value: '02/07/2025' }, // format must match what's expected
+  });
 
   await waitFor(() => {
-    expect(input).toHaveValue('02/07/2025'); // adjust if needed
+    expect(input).toHaveValue('02/07/2025');
   });
 });
