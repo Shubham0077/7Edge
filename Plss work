@@ -1,39 +1,171 @@
-import { render } from '@testing-library/react';
-import * as React from 'react';
-import * as reactRedux from 'react-redux';
-import CreditcardBillPaymentCASA from '../../pages/CreditcardBillPaymentCASA';
-import MockReduxProvider from '../../utils/MockReduxProvider';
+import { render, screen, fireEvent, within } from '@testing-library/react';
+import MockReduxProvider, { mockStore } from '../../utils/MockReduxProvider';
+import '@testing-library/jest-dom';
+import { useSelector } from 'react-redux';
+import { useRouter } from 'next/router';
+import ResetPinScreen from '../../pages/resetPin';
+import LocaleConstant from '../../public/locales/en-us.json';
 
-test('sets showModal to true when enhanceCreditLimit matches crlim', () => {
-  const setShowModal = jest.fn();
+jest.mock('jose', () => ({
+  jose: jest.fn(),
+}));
 
-  // 👇 Mock the 1st useState (for showModal)
-  const originalUseState = React.useState;
-  jest.spyOn(React, 'useState')
-    .mockImplementationOnce(() => [false, setShowModal]) // showModal
-    .mockImplementation((...args) => originalUseState(...args)); // rest default
+jest.mock('next/router', () => ({
+  useRouter: jest.fn(),
+}));
+const push = jest.fn();
+(useRouter as jest.Mock).mockReturnValue({ push });
 
-  // 👇 Mock useSelector to return matching values
-  jest.spyOn(reactRedux, 'useSelector').mockImplementation((selectorFn: any) =>
-    selectorFn({
+jest.mock('ui', () => ({
+  ...jest.requireActual('ui'),
+  useLocale: () => ({
+    ...LocaleConstant,
+  }),
+}));
+jest.mock('@moengage/web-sdk', () => ({
+  initialize: jest.fn(),
+  add_unique_user_id: jest.fn(),
+  track_event: jest.fn(),
+  add_user_attribute: jest.fn(),
+  isMoeLoaded: jest.fn().mockReturnValue(true),
+}));
+jest.mock('react-redux', () => ({
+  ...jest.requireActual('react-redux'),
+  useSelector: jest.fn(),
+}));
+
+jest.mock('../../redux/slices/creditCardDashboardSlice', () => ({
+  showNotification: jest.fn(),
+}));
+
+describe('ResetPinScreen', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.resetModules();
+  });
+  useSelector.mockImplementation((cb: any) =>
+    cb({
       creditcardCombineReducers: {
         creditCardDashboardReducer: {
           selectedCreditCardData: {
-            enhanceCreditLimit: '500000',
+            logoDesc: 'Visa',
+            crdNbr: '0004271244771723788',
+            outstandingBalance: '5000',
+            cardholderFlg: '0',
           },
-          creditCardAccountDetails: {
-            crlim: '500000', // ✅ matches
-          },
+          isLoading: false,
+          creditCardAccountDetails: { billingCycle: '8' },
+          creditCardUniqueLocateEnquiry: [],
+        },
+        creditCardTemporaryCardBlockReducer: {
+          temporaryCardBlockReason: [
+            { blockCode: '1', blockReason: 'lost', blockId: 1 },
+            { blockCode: '2', blockReason: 'expired', blockId: 2 },
+          ],
+        },
+        creditCardResetPinReducer: {
+          rsaEventResp: { data: { questions: { id: '004', question: '' } } },
         },
       },
-    })
+    }),
   );
 
-  render(
-    <MockReduxProvider>
-      <CreditcardBillPaymentCASA />
-    </MockReduxProvider>
-  );
+  jest.spyOn(mockStore, 'dispatch').mockImplementation(() => {
+    return {
+      unwrap: jest.fn(() => Promise.resolve({})),
+    };
+  });
+  test('displays all the text', async () => {
+    render(
+      <MockReduxProvider>
+        <ResetPinScreen />
+      </MockReduxProvider>,
+    );
+    expect(screen.getByText('Reset PIN')).toBeInTheDocument();
+    expect(screen.getByText('Enter your new 4-Digit PIN')).toBeInTheDocument();
+    expect(screen.getByText('Expiry Date')).toBeInTheDocument();
+    expect(screen.getByText('CVV')).toBeInTheDocument();
+    expect(screen.getByText('Cancel')).toBeInTheDocument();
+  });
+  test('should set error when pin has same four digits', () => {
+    render(
+      <MockReduxProvider>
+        <ResetPinScreen />
+      </MockReduxProvider>,
+    );
 
-  expect(setShowModal).toHaveBeenCalledWith(true); // ✅ Covered
+    const { getByTestId } = screen;
+    const pinInput = getByTestId('enterPin_testId');
+    expect(pinInput).toBeInTheDocument();
+    const otpInputs = within(pinInput).getAllByRole('textbox');
+    expect(otpInputs).toHaveLength(4);
+    otpInputs.forEach((input, index) => {
+      fireEvent.change(input, { target: { value: '1' } });
+    });
+  });
+  test('invalid pin', async () => {
+    render(
+      <MockReduxProvider>
+        <ResetPinScreen />
+      </MockReduxProvider>,
+    );
+    const otp = screen.getAllByRole('textbox');
+    fireEvent.change(otp[0], { target: { value: '0' } });
+    fireEvent.change(otp[1], { target: { value: '0' } });
+    fireEvent.change(otp[2], { target: { value: '0' } });
+    fireEvent.change(otp[3], { target: { value: '0' } });
+
+    expect(screen.getByRole('button', { name: /Cancel/i })).toBeEnabled();
+    fireEvent?.click(screen?.getByRole('button', { name: /Cancel/i }));
+    expect(screen.getByRole('button', { name: /Confirm PIN/i })).not.toBeEnabled();
+  });
+  test('mismatch pin', async () => {
+    const mockDispatch = jest.fn();
+    jest.spyOn(require('react-redux'), 'useDispatch').mockReturnValue(mockDispatch);
+
+    render(
+      <MockReduxProvider>
+        <ResetPinScreen />
+      </MockReduxProvider>,
+    );
+    const otp = screen.getAllByRole('textbox');
+    fireEvent.change(otp[0], { target: { value: '1' } });
+    fireEvent.change(otp[1], { target: { value: '3' } });
+    fireEvent.change(otp[2], { target: { value: '2' } });
+    fireEvent.change(otp[3], { target: { value: '7' } });
+
+    fireEvent.change(otp[4], { target: { value: '1' } });
+    fireEvent.change(otp[5], { target: { value: '2' } });
+    fireEvent.change(otp[6], { target: { value: '2' } });
+    fireEvent.change(otp[7], { target: { value: '7' } });
+  });
+  test('valid pin', async () => {
+    render(
+      <MockReduxProvider>
+        <ResetPinScreen />
+      </MockReduxProvider>,
+    );
+    const otp = screen.getAllByRole('textbox');
+    fireEvent.change(otp[0], { target: { value: '1' } });
+    fireEvent.change(otp[1], { target: { value: '3' } });
+    fireEvent.change(otp[2], { target: { value: '2' } });
+    fireEvent.change(otp[3], { target: { value: '7' } });
+
+    fireEvent.change(otp[4], { target: { value: '1' } });
+    fireEvent.change(otp[5], { target: { value: '3' } });
+    fireEvent.change(otp[6], { target: { value: '2' } });
+    fireEvent.change(otp[7], { target: { value: '7' } });
+
+    expect(screen.getByRole('button', { name: /Confirm PIN/i })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: /Confirm PIN/i }));
+    jest.spyOn(mockStore, 'dispatch').mockImplementation(() => {
+      return {
+        unwrap: jest.fn(() =>
+          Promise.resolve({
+            returnCode: 0,
+          }),
+        ),
+      };
+    });
+  });
 });
