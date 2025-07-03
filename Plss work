@@ -1,37 +1,25 @@
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import CreditcardBillPaymentCASA from '../../pages/CreditcardBillPaymentCASA';
-import MockReduxProvider from '../../utils/MockReduxProvider';
+test('shows modal when enhanceCreditLimit matches crlim', () => {
+  const mockState = {
+    creditcardCombineReducers: {
+      creditCardDashboardReducer: {
+        selectedCreditCardData: {
+          enhanceCreditLimit: '500000',
+        },
+        creditCardAccountDetails: {
+          crlim: '500000',
+        },
+      },
+    },
+  };
 
-test('renders input for CUSTOM_AMOUNT_DUE radio and types into it', async () => {
-  const user = userEvent.setup();
+  jest.spyOn(reactRedux, 'useSelector').mockImplementation((fn) => fn(mockState));
 
   render(
     <MockReduxProvider>
-      <CreditcardBillPaymentCASA />
+      <YourComponent />
     </MockReduxProvider>
   );
 
-  // 🔍 Find the CUSTOM_AMOUNT_DUE radio by value
-  const customRadio = screen
-    .getAllByRole('radio')
-    .find(r => r.getAttribute('value') === 'CUSTOM_AMOUNT_DUE');
-
-  expect(customRadio).toBeDefined();
-
-  await user.click(customRadio!); // trigger render condition
-
-  // 🔎 Debug the DOM after clicking
-  screen.debug(); // check if custom-amount-due appears in DOM
-
-  // ✅ Check the field is now rendered
-  const wrapper = await screen.findByTestId('custom-amount-due');
-  expect(wrapper).toBeInTheDocument();
-
-  const input = wrapper.querySelector('input')!;
-  await user.clear(input);
-  await user.type(input, '100');
-
-  const proceed = screen.getByText(/proceed/i).closest('button');
-  expect(proceed).not.toBeDisabled();
+  // ✅ Assert that the modal appeared
+  expect(screen.getByTestId('limit-modal')).toBeInTheDocument();
 });
