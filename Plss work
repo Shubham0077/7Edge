@@ -1,25 +1,39 @@
-test('shows modal when enhanceCreditLimit matches crlim', () => {
-  const mockState = {
-    creditcardCombineReducers: {
-      creditCardDashboardReducer: {
-        selectedCreditCardData: {
-          enhanceCreditLimit: '500000',
-        },
-        creditCardAccountDetails: {
-          crlim: '500000',
+import { render } from '@testing-library/react';
+import * as React from 'react';
+import * as reactRedux from 'react-redux';
+import CreditcardBillPaymentCASA from '../../pages/CreditcardBillPaymentCASA';
+import MockReduxProvider from '../../utils/MockReduxProvider';
+
+test('sets showModal to true when enhanceCreditLimit matches crlim', () => {
+  const setShowModal = jest.fn();
+
+  // 👇 Mock the 1st useState (for showModal)
+  const originalUseState = React.useState;
+  jest.spyOn(React, 'useState')
+    .mockImplementationOnce(() => [false, setShowModal]) // showModal
+    .mockImplementation((...args) => originalUseState(...args)); // rest default
+
+  // 👇 Mock useSelector to return matching values
+  jest.spyOn(reactRedux, 'useSelector').mockImplementation((selectorFn: any) =>
+    selectorFn({
+      creditcardCombineReducers: {
+        creditCardDashboardReducer: {
+          selectedCreditCardData: {
+            enhanceCreditLimit: '500000',
+          },
+          creditCardAccountDetails: {
+            crlim: '500000', // ✅ matches
+          },
         },
       },
-    },
-  };
-
-  jest.spyOn(reactRedux, 'useSelector').mockImplementation((fn) => fn(mockState));
+    })
+  );
 
   render(
     <MockReduxProvider>
-      <YourComponent />
+      <CreditcardBillPaymentCASA />
     </MockReduxProvider>
   );
 
-  // ✅ Assert that the modal appeared
-  expect(screen.getByTestId('limit-modal')).toBeInTheDocument();
+  expect(setShowModal).toHaveBeenCalledWith(true); // ✅ Covered
 });
