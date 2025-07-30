@@ -1,0 +1,78 @@
+import { Grid, Modal, Typography, Button } from '@mui/material';
+import React from 'react';
+import styles from './SuccessScreen.module.css';
+import { LOAN_APP } from 'ui';
+
+interface Success {
+  successScreen: boolean;
+  setSuccessScreen: any;
+  applicationReferenceNumber: string;
+  emailBtnClicked: boolean;
+  pdf: string;
+}
+const SuccessScreen: React.FC<Success> = ({
+  successScreen,
+  setSuccessScreen,
+  applicationReferenceNumber,
+  emailBtnClicked,
+  pdf,
+}) => {
+  const openBase64PdfInNewTab = (base64Data: string) => {
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array(byteCharacters.length)
+      .fill(0)
+      .map((_, i) => byteCharacters.charCodeAt(i));
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'application/pdf' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    window.open(blobUrl, '_blank');
+  };
+
+  const handleclosebtn = (pdf: string) => {
+    console.log('pdf', pdf);
+    setSuccessScreen(false);
+    if (pdf === '') return;
+    openBase64PdfInNewTab(pdf);
+  };
+
+  return (
+    <Modal open={successScreen}>
+      <Grid className={styles.Outer}>
+        <Grid justifyContent={'center'} display={'flex'}>
+          <img src={LOAN_APP.SUCCESSFUL} alt={''} className={styles.successImg} />
+        </Grid>
+        <Grid justifyContent={'center'} display={'flex'}>
+          <Typography className={styles.heading1}>CONGRATULATIONS</Typography>
+        </Grid>
+        {emailBtnClicked ? (
+          <Grid justifyContent={'center'} display={'flex'}>
+            <Typography>
+              Your TDS certificate has been sent to your registered E-Mail ID.
+            </Typography>
+          </Grid>
+        ) : (
+          <Grid justifyContent={'center'} display={'flex'}>
+            <Typography>Your TDS certificate has been successfully downloaded.</Typography>
+          </Grid>
+        )}
+        <Grid justifyContent={'center'} display={'flex'}>
+          <Typography className={styles.heading2}>{applicationReferenceNumber}</Typography>
+        </Grid>
+        <Grid display={'flex'} gap={'1rem'} marginTop={'2rem'} justifyContent={'center'}>
+          <Button
+            className={styles.Button}
+            onClick={() => handleclosebtn(pdf)}
+            data-testid="continueButtonAccounts"
+          >
+            <Typography className={styles.textColor}>
+              {emailBtnClicked ? 'Back to Home' : 'View Certificate'}
+            </Typography>
+          </Button>
+        </Grid>
+      </Grid>
+    </Modal>
+  );
+};
+
+export default SuccessScreen;
