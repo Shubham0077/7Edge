@@ -1,0 +1,30 @@
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import SuccessScreen from '../SuccessScreen';
+import '@testing-library/jest-dom';
+
+describe('SuccessScreen - openBase64PdfInNewTab line', () => {
+  it('calls window.open with a blob URL when PDF is provided', () => {
+    const mockSetSuccessScreen = jest.fn();
+    const mockWindowOpen = jest.fn();
+    window.open = mockWindowOpen;
+
+    const fakePdf = btoa('dummy pdf content');
+
+    render(
+      <SuccessScreen
+        successScreen={true}
+        setSuccessScreen={mockSetSuccessScreen}
+        applicationReferenceNumber="ABC123"
+        emailBtnClicked={false}
+        pdf={fakePdf}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('continueButtonAccounts'));
+
+    expect(mockSetSuccessScreen).toHaveBeenCalledWith(false);
+    expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+    expect(mockWindowOpen).toHaveBeenCalledWith(expect.stringContaining('blob:'), '_blank');
+  });
+});
