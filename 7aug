@@ -1,0 +1,47 @@
+it('should call downloadBase64Pdf when val is "download" and returnCode is "0"', async () => {
+  const mockDispatch = jest.fn().mockResolvedValue({
+    payload: {
+      returnCode: '0',
+      data: {
+        pdfData: 'dummyBase64Data'
+      }
+    }
+  });
+
+  const mockSetSuccessScreen = jest.fn();
+  const mockSetPdf = jest.fn();
+
+  // Mock global functions or dependencies if needed
+  const mockDownloadBase64Pdf = jest.fn();
+  global.document.createElement = () => {
+    return {
+      setAttribute: jest.fn(),
+      click: jest.fn(),
+      remove: jest.fn()
+    };
+  };
+  document.body.appendChild = jest.fn();
+  document.body.removeChild = jest.fn();
+
+  // Call the function with mocks injected
+  await tdsDownloadCall.call(
+    {
+      dispatch: mockDispatch,
+      setSuccessScreen: mockSetSuccessScreen,
+      setPdf: mockSetPdf,
+      downloadBase64Pdf: mockDownloadBase64Pdf,
+      panNumber: 'ABCDE1234F',
+      selectedQuarterOption: 'Q1',
+      selectedYearOption: '2024-25',
+      finacleAccounts: {
+        DOBorDOI: '2020-01-01',
+        emailId: 'test@example.com',
+      },
+    },
+    'download'
+  );
+
+  expect(mockSetSuccessScreen).toHaveBeenCalledWith(true);
+  expect(mockSetPdf).toHaveBeenCalledWith('dummyBase64Data');
+  expect(document.body.appendChild).toHaveBeenCalled();
+});
