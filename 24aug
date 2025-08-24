@@ -1,0 +1,20 @@
+// src/utils/fetchBeneDetails.ts
+export const fetchBeneDetails = async (
+  dispatch: any,
+  getBeneDetails: any,
+  body: {
+    remAccountNo: string;
+    remName: string;
+    remMobileNo: string;
+    payeeBankMmid: string;
+    payeeMobileNo: string;
+  }
+) => {
+  try {
+    const result = await dispatch(getBeneDetails(body));
+    return result; // return the API result to the caller
+  } catch (error: any) {
+    console.error("fetchBeneDetails error:", error);
+    throw error; // let the caller handle error
+  }
+};
