@@ -18,3 +18,33 @@ export const fetchBeneDetails = async (
     throw error; // let the caller handle error
   }
 };
+
+
+
+
+import { fetchBeneDetails } from "../../utils/fetchBeneDetails";
+
+const RootQuickTransfer = () => {
+
+  const handleFetchBene = async () => {
+    const body = {
+      remAccountNo: indusIndCutomerAcc[0]?.accountNumber,
+      remName: `${firstName} ${lastName}`,
+      remMobileNo: mobileNumberSliced,
+      payeeBankMmid: "9211000",
+      payeeMobileNo: confirmMobileNumber,
+    };
+
+    const result = await fetchBeneDetails(dispatch, getBeneDetails, body);
+
+    if (result?.payload?.returnCode === "200") {
+      setIsBeneDetailsFound(BooleanValue?.true);
+      setBeneDetailsName(result.payload?.data?.beneficiaryName);
+    } else {
+      setErrorScreen(BooleanValue?.true);
+      setFirstApiError(BooleanValue?.true);
+    }
+  };
+
+  // use handleFetchBene wherever needed
+};
