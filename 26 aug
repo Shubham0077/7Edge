@@ -1,12 +1,20 @@
+
 export function lastFiveFinancialYears(
   setYears: React.Dispatch<React.SetStateAction<{ label: string; value: string }[]>>
 ): void {
-  const currentYear = new Date().getFullYear();
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth(); // 0 = Jan, 11 = Dec
+
+  // If before April, financial year belongs to previous year
+  const fyEndYear = currentMonth < 3 ? currentYear : currentYear + 1;
+
   const years: { label: string; value: string }[] = [];
 
   for (let i = 0; i < 5; i++) {
-    const year = currentYear - i;
-    const yearRange = `${year - 1}-${year}`;
+    const endYear = fyEndYear - i;
+    const startYear = endYear - 1;
+    const yearRange = `${startYear}-${endYear}`;
     years.push({ label: yearRange, value: yearRange });
   }
 
