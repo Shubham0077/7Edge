@@ -1,0 +1,14 @@
+export function lastFiveFinancialYears(
+  setYears: React.Dispatch<React.SetStateAction<{ label: string; value: string }[]>>
+): void {
+  const currentYear = new Date().getFullYear();
+  const years: { label: string; value: string }[] = [];
+
+  for (let i = 0; i < 5; i++) {
+    const year = currentYear - i;
+    const yearRange = `${year - 1}-${year}`;
+    years.push({ label: yearRange, value: yearRange });
+  }
+
+  setYears(years);
+}
