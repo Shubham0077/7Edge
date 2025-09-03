@@ -1,0 +1,30 @@
+const openWindowWithPost = () => {
+  // Open a new blank tab/window
+  const newWindow = window.open("", "_blank");
+  if (!newWindow) return;
+
+  // Create a form
+  const form = newWindow.document.createElement("form");
+  form.method = "POST";
+  form.action = `${window.location.origin}/corp/BANKWAYAction.Statetax.MPSTPayment.Init`;
+
+  // Data you want to append
+  const formData = {
+    encdata: "your-encdata-here",
+    RU: "your-ru-here",
+    FRU: "your-fru-here",
+    bankShortName: "INDD" // example value
+  };
+
+  // Append all key/value pairs as hidden inputs
+  Object.entries(formData).forEach(([key, value]) => {
+    const hiddenField = newWindow.document.createElement("input");
+    hiddenField.type = "hidden";
+    hiddenField.name = key;
+    hiddenField.value = value;
+    form.appendChild(hiddenField);
+  });
+
+  newWindow.document.body.appendChild(form);
+  form.submit();
+};
