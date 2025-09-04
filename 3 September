@@ -1,8 +1,14 @@
-const updatedCards = [
-  ...(config?.section12?.cards ?? []),      // fallback to empty array
-  ...(config?.section17?.cards ?? []),      // fallback to empty array
-  ...(config?.section17?.card ? [config.section17.card] : []), // if single card exists
-].map((card, index, arr) => ({
+const updatedCards = (
+  tsMPST
+    ? (() => {
+        const cards = [
+          ...(config?.section12?.cards ?? []),
+          ...(config?.section17?.card ? [config.section17.card] : []),
+        ];
+        return cards.length ? cards : undefined; // keep undefined if empty
+      })()
+    : config?.section17?.cards
+)?.map((card, index, arr) => ({
   ...card,
-  isBottomDivider: index !== arr.length - 1, // true for all except the last one
+  isBottomDivider: index !== arr.length - 1,
 }));
