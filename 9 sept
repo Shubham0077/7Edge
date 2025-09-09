@@ -1,0 +1,84 @@
+import React from "react";
+import { render } from "@testing-library/react";
+import { Provider } from "react-redux";
+import configureStore from "redux-mock-store";
+import thunk from "redux-thunk";
+import Index from "../index"; // adjust path
+import {
+  profanity,
+  fetchMpstPaymentDetails,
+  getDashboardBalance,
+  retrieveTnC,
+} from "../../../redux/paymentGatewaySlice";
+import { getTxnSessId } from "../../../utilis/common.util";
+
+// mock the imported thunks so we don’t hit API
+jest.mock("../../../redux/paymentGatewaySlice", () => ({
+  profanity: jest.fn(() => ({ type: "mockProfanity" })),
+  fetchMpstPaymentDetails: jest.fn((payload) => ({
+    type: "mockFetchMpstPaymentDetails",
+    payload,
+  })),
+  getDashboardBalance: jest.fn((payload) => ({
+    type: "mockGetDashboardBalance",
+    payload,
+  })),
+  retrieveTnC: jest.fn((arg) => ({
+    type: "mockRetrieveTnC",
+    payload: arg,
+  })),
+}));
+
+jest.mock("../../../utilis/common.util", () => ({
+  ...jest.requireActual("../../../utilis/common.util"),
+  getTxnSessId: jest.fn(() => "mockedTxnId"),
+}));
+
+const middlewares = [thunk];
+const mockStore = configureStore(middlewares);
+
+describe("Index component useEffect dispatches", () => {
+  it("should dispatch profanity, fetchMpstPaymentDetails, getDashboardBalance and retrieveTnC on mount", () => {
+    const store = mockStore({
+      authdata: { verifyPostLoginResp: { cifDetails: [{ finacleCif: [{}] }] } },
+      paymentGateway: {},
+    });
+
+    render(
+      <Provider store={store}>
+        <Index />
+      </Provider>
+    );
+
+    const actions = store.getActions();
+
+    // check profanity dispatched
+    expect(profanity).toHaveBeenCalled();
+    expect(actions).toContainEqual({ type: "mockProfanity" });
+
+    // check fetchMpstPaymentDetails with mocked txnId
+    expect(fetchMpstPaymentDetails).toHaveBeenCalledWith({
+      txn_sess_id: "mockedTxnId",
+    });
+    expect(actions).toContainEqual({
+      type: "mockFetchMpstPaymentDetails",
+      payload: { txn_sess_id: "mockedTxnId" },
+    });
+
+    // check getDashboardBalance with scheme types
+    expect(getDashboardBalance).toHaveBeenCalledWith({
+      schemeType: ["SBA", "CAA", "ODA"],
+    });
+    expect(actions).toContainEqual({
+      type: "mockGetDashboardBalance",
+      payload: { schemeType: ["SBA", "CAA", "ODA"] },
+    });
+
+    // check retrieveTnC with correct arg
+    expect(retrieveTnC).toHaveBeenCalledWith("ETAX_CBDT_PAYMENT");
+    expect(actions).toContainEqual({
+      type: "mockRetrieveTnC",
+      payload: "ETAX_CBDT_PAYMENT",
+    });
+  });
+});
