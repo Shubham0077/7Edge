@@ -1,14 +1,290 @@
-const updatedCards = (
-  tsMPST
-    ? (() => {
-        const cards = [
-          ...(config?.section12?.cards ?? []),
-          ...(config?.section17?.card ? [config.section17.card] : []),
-        ];
-        return cards.length ? cards : undefined; // keep undefined if empty
-      })()
-    : config?.section17?.cards
-)?.map((card, index, arr) => ({
-  ...card,
-  isBottomDivider: index !== arr.length - 1,
-}));
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import styles from '../../../styles/mpst.module.css';
+import { AUTHORIZATION_APP, IpAddress, ThemeProvider } from 'ui';
+import Stepper from '../../../components/stepper.component';
+import Header from '../../../components/header.component';
+import { useAppDispatch, useAppSelector } from '../../../redux/hooks';
+import { usePgLocale } from '../../../hooks/usePgLocale';
+import Success from '../../../components/success.component';
+import Footer from '../../../components/footer.component';
+import PaymentSummary from '../../../components/summary.component';
+import { StyledEngineProvider } from '@mui/material';
+import { CONSTANTS, tncConfig } from '../../../utilis/appConstant.util';
+import { getCurrencySymbol, getTxnSessId, profanityFilter } from '../../../utilis/common.util';
+import {
+  acceptTnc,
+  fetchMpstPaymentDetails,
+  getDashboardBalance,
+  profanity,
+  retrieveTnC,
+} from '../../../redux/paymentGatewaySlice';
+import TermsCondition from '../../../components/TermsCondition';
+import { useSelector } from 'react-redux';
+import { AUTH_TYPE_verifyPostLogin_Mobile } from '../../../utilis/appConstant.util';
+export default function index() {
+  const locale = usePgLocale();
+  const dispatch = useAppDispatch();
+  const [step, setStep] = useState(0);
+  const [isChecked, setIsChecked] = useState(false);
+  const [showTncModal, setShowTncModal] = useState(false);
+  const [remarks, setRemarks] = useState('');
+
+  const first_name = useAppSelector(
+    (state) => state?.authdata?.verifyPostLoginResp?.cifDetails[0]?.finacleCif[0]?.firstName,
+  );
+  const gender = useAppSelector(
+    (state) => state?.authdata?.verifyPostLoginResp?.cifDetails[0]?.finacleCif[0]?.gender,
+  );
+  const lastName = useAppSelector(
+    (state) => state?.authdata?.verifyPostLoginResp?.cifDetails[0]?.finacleCif[0]?.lastName,
+  );
+  const phoneNumber = useAppSelector(
+    (state) => state?.authdata?.verifyPostLoginResp?.cifDetails[0]?.finacleCif[0]?.phoneNumber,
+  );
+  const mpstPaymentDetail = useAppSelector((state) => state?.paymentGateway?.mpstPaymentDetail);
+  const mpstPaymentStatus = useAppSelector((state) => state?.paymentGateway?.mpstPaymentStatus);
+  const profanityData = useAppSelector((state) => state?.paymentGateway?.profanityData);
+  const profanityStatus = useAppSelector((state) => state?.paymentGateway?.profanityStatus);
+  const cifId = useSelector(
+    (state: AUTH_TYPE_verifyPostLogin_Mobile) =>
+      state?.authdata?.verifyPostLoginResp?.cifDetails[0]?.finacleCif[0]?.CIF,
+  );
+  const userCountryCode = useAppSelector((state) => state?.authdata?.userProfile?.countryCode);
+  const mobileNumberSliced = useAppSelector(
+    (state) => state?.authdata?.verifyPostLoginResp?.cifDetails[0]?.finacleCif[0]?.phoneNumber,
+  );
+  const termsConditionData = useAppSelector((state) => state?.paymentGateway?.termsCondition);
+  const fullName = useMemo(() => {
+    if (gender === 'M') {
+      return `${locale?.MR} ${first_name} ${lastName}`;
+    } else {
+      return `${locale?.MRS} ${first_name} ${lastName}`;
+    }
+  }, [first_name, lastName, gender]);
+
+  const getBgImage = useMemo(() => {
+    const style = {
+      backgroundImage: `url(${AUTHORIZATION_APP?.CBDT_SUMMARY_BANNER})`,
+    };
+    return style;
+  }, []);
+
+  const handleReject = useCallback(() => {
+    setStep(2);
+  }, []);
+
+  const handleAccept = useCallback(() => {
+    setStep(2);
+    dispatch(
+      acceptTnc({
+        cifId: cifId ?? sessionStorage.getItem('cif_id'),
+        countryCallingCode: userCountryCode,
+        mobileNumber: mobileNumberSliced,
+        deviceId: '',
+        channelName: tncConfig?.tncChannelName,
+        tncId: termsConditionData?.tncId,
+        tncVersion: termsConditionData?.version,
+        isAccepted: true,
+        appVersion: '',
+        ipAddress: IpAddress(true),
+      }),
+    );
+  }, [termsConditionData]);
+
+  const handleRemarksChange = useCallback((el: React.ChangeEvent<HTMLInputElement>) => {
+    const value = el.target.value.trim();
+    if (!CONSTANTS.ALLOWED_CHARACTERS_REGEX.test(value) && value?.length) return;
+    // setErrMsg({ ...errMsg, remarks: null });
+    setRemarks(value);
+
+    const profanityCheck = profanityFilter(value, profanityData || []);
+    if (profanityCheck.length === 0) {
+      if (value.length > 50) {
+        // setErrMsg({ ...errMsg, remarks: locale?.REMARKS_MAX_EXCEED });
+      }
+    } else {
+      // setErrMsg({ ...errMsg, remarks: locale?.PROFANITY_MESSAGE });
+    }
+    // quickTransferInfoValidation(VALIDATION_TYPE?.remarks, value);
+  }, []);
+
+  const summaryDetails = useMemo(() => {
+    return [
+      {
+        label: locale?.NAME_OF_TAX_PAYER,
+        key: 'name',
+        value: mpstPaymentDetail?.payment_details?.payment_info?.name,
+      },
+      {
+        label: locale?.TIN,
+        key: 'tin',
+        value: mpstPaymentDetail?.payment_details?.payment_info?.tin,
+      },
+      {
+        label: locale?.URN,
+        key: 'urn',
+        value: mpstPaymentDetail?.payment_details?.payment_info?.urn,
+      },
+      {
+        label: locale?.PURPOSE_OF_PAYMENT,
+        key: 'purpose',
+        value: mpstPaymentDetail?.payment_details?.payment_info?.purpose,
+      },
+      {
+        label: locale?.TOTAL_AMOUNT,
+        key: 'total_amount',
+        value: `${getCurrencySymbol(CONSTANTS.INR)} ${mpstPaymentDetail?.payment_details?.payment_info?.total_amount}`,
+      },
+      {
+        label: locale?.CRN_AMOUNT_1,
+        key: 'crn_amount_1',
+        value: undefined,
+      },
+      {
+        label: locale?.CRN_AMOUNT_2,
+        key: 'crn_amount_2',
+        value: undefined,
+      },
+    ];
+  }, [locale]);
+
+  useEffect(() => {
+    dispatch(profanity());
+    dispatch(
+      fetchMpstPaymentDetails({
+        txn_sess_id: getTxnSessId(),
+      }),
+    );
+    dispatch(
+      getDashboardBalance({
+        schemeType: ['SBA', 'CAA', 'ODA'],
+      }),
+    );
+  }, []);
+
+  useEffect(() => {
+    dispatch(retrieveTnC('ETAX_CBDT_PAYMENT'));
+  }, []);
+
+  const handleOnTermsClick = useCallback(() => {
+    setShowTncModal((value) => !value);
+  }, []);
+
+  return (
+    <ThemeProvider>
+      <StyledEngineProvider injectFirst>
+        <div className={styles.container}>
+          <div className={styles.header}>
+            <img
+              className={styles.headerLogo}
+              src={AUTHORIZATION_APP?.INDUSIND_WHITE_LOGO}
+              alt=""
+            />
+          </div>
+
+          <div className={styles.summaryCenterContainer}>
+            <div className={styles.summaryContainer} style={getBgImage}>
+              <Header fullName={fullName} />
+              <Stepper step={step} />
+
+              <div className={styles.summary}>
+                {step == 2 ? (
+                  <Success referenceId={'1234567890'} />
+                ) : (
+                  // or failure screen based on status
+                  <PaymentSummary
+                    summaryDetails={summaryDetails}
+                    remarks={remarks}
+                    handleRemarksChange={handleRemarksChange}
+                  />
+                )}
+              </div>
+
+              {step != 2 && (
+                <Footer
+                  checkboxValue={isChecked}
+                  handleChangeCheckbox={() => setIsChecked(!isChecked)}
+                  handleOnTermsClick={() => setShowTncModal(true)}
+                  handlePrimaryBtnClick={handleReject}
+                  primaryButtonText={locale?.REJECT}
+                  secondaryButtonText={locale?.ACCEPT}
+                  handleSecondaryBtnClick={handleAccept}
+                  isSecondaryBtnLoading={false}
+                  isSecondaryBtnDisabled={!isChecked}
+                  termsTextPrefix={locale?.ACCEPT?.toLowerCase()}
+                  termsLinkText={locale?.TERMS_CONDITIONS}
+                  termsTextSuffix={locale?.TAX_PAYMENT}
+                />
+              )}
+              <TermsCondition
+                docContent={termsConditionData?.contents}
+                open={showTncModal}
+                onClose={handleOnTermsClick}
+              />
+            </div>
+          </div>
+
+          {/* <Dialog
+        sx={dialogStyles}
+        className={modalStyles.Payment_Payee_Dialog}
+        open={props?.activeStep == STEP_4 && step !== 2}
+      >
+        <DialogContent>
+          <Grid className={modalStyles.Payment_Payee_DialogBox}>
+            <Grid className={modalStyles.Payment_Payee_DeleteDialogHeader}>
+              <Typography className={modalStyles.Payment_Payee_DeleteDialogHeading}>
+                {locale?.VERIFY_OTP}
+              </Typography>
+
+              <Typography variant="caption" onClick={handleCloseOtp}>
+                <img
+                  src={PAYMENT_APP.Cross}
+                  alt={ManagePayeeConstants.IMG_ALT}
+                  className={modalStyles.Payment_Payee_DialogCloseIcon}
+                  data-testid={ManagePayeeConstants.TEST_CLOSE_OTP_DELETE}
+                />
+              </Typography>
+            </Grid>
+            <Otp
+              tempValue={props?.generateOtpObj?.otpValue || ''}
+              otp={props?.otp}
+              inputRefs={props?.inputRefs}
+              otpErr={props?.errMsg?.otp}
+              popup={BooleanValue.true}
+              handleChange={props?.handleOTPChange}
+              handleKeyDown={props?.handleKeyDown}
+              handleResend={() => {
+                props?.setOtp(['', '', '', '', '', '']);
+                props?.handleSendOtp();
+              }}
+              validateOtpErrMsg={props?.errMsg?.otp}
+              otpSubText={getOtpSubText}
+              resendOtpText={locale?.RESEND_OTP}
+            />
+            <Grid className={modalStyles.Payment_Payee_DialogSaveButtonGrid}>
+              <Button
+                onClick={() => {
+                  document.dispatchEvent(new CustomEvent('portal.updateTimeout'));
+                  props?.handleNext();
+                }}
+                data-testid={ManagePayeeConstants.TEST_PAYEE_DELETED}
+                className={modalStyles.Payment_Payee_DialogSaveButton}
+                disabled={internalFundTransferStatus == responseStatus.pending}
+              >
+                {_renderButtonText()}
+              </Button>
+            </Grid>
+          </Grid>
+        </DialogContent>
+      </Dialog>
+
+      <TermsCondition
+        docContent={termsConditionData?.contents}
+        open={showTncModal}
+        onClose={handleOnTermsClick}
+      />  */}
+        </div>
+      </StyledEngineProvider>
+    </ThemeProvider>
+  );
+}
