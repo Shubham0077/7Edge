@@ -1,0 +1,45 @@
+import React from "react";
+import { render, fireEvent } from "@testing-library/react";
+import { useDispatch } from "react-redux";
+import Index from "./index";
+
+jest.mock("react-redux", () => ({
+  useDispatch: jest.fn(),
+  useSelector: jest.fn(),
+}));
+
+jest.mock("ui", () => ({
+  IpAddress: jest.fn(() => "127.0.0.1"),
+}));
+
+describe("Index page", () => {
+  const mockDispatch = jest.fn();
+
+  beforeEach(() => {
+    (useDispatch as jest.Mock).mockReturnValue(mockDispatch);
+    jest.clearAllMocks();
+  });
+
+  it("should call handleAccept and dispatch correct payload", () => {
+    const { getByTestId } = render(<Index />);
+
+    // 🔑 Add data-testid="accept-btn" in your component where handleAccept is triggered
+    const acceptButton = getByTestId("accept-btn");
+    fireEvent.click(acceptButton);
+
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        // whatever acceptTnc returns must include at least payload
+        payload: expect.objectContaining({
+          cifId: expect.any(String),
+          countryCallingCode: expect.anything(),
+          mobileNumber: expect.anything(),
+          tncId: expect.anything(),
+          tncVersion: expect.anything(),
+          isAccepted: true,
+          ipAddress: "127.0.0.1",
+        }),
+      })
+    );
+  });
+});
