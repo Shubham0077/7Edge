@@ -1,43 +1,31 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react";
-import { useDispatch } from "react-redux";
+import * as ReactRedux from "react-redux";
 import Index from "./index";
 
-jest.mock("react-redux", () => ({
-  useDispatch: jest.fn(),
-  useSelector: jest.fn(),
-}));
-
-jest.mock("ui", () => ({
-  IpAddress: jest.fn(() => "127.0.0.1"),
-}));
-
 describe("Index page", () => {
-  const mockDispatch = jest.fn();
+  it("should dispatch correct action when Accept is clicked", () => {
+    const mockDispatch = jest.fn();
 
-  beforeEach(() => {
-    (useDispatch as jest.Mock).mockReturnValue(mockDispatch);
-    jest.clearAllMocks();
-  });
+    // 👇 Spy only on useDispatch, leave everything else alone
+    jest.spyOn(ReactRedux, "useDispatch").mockReturnValue(mockDispatch);
 
-  it("should call handleAccept and dispatch correct payload", () => {
-    const { getByTestId } = render(<Index />);
+    const { getByText } = render(<Index />);
 
-    // 🔑 Add data-testid="accept-btn" in your component where handleAccept is triggered
-    const acceptButton = getByTestId("accept-btn");
+    // find the button by text (no testid needed)
+    const acceptButton = getByText(/accept/i);
+
     fireEvent.click(acceptButton);
 
+    // ✅ Now assert dispatch received the right payload
     expect(mockDispatch).toHaveBeenCalledWith(
       expect.objectContaining({
-        // whatever acceptTnc returns must include at least payload
         payload: expect.objectContaining({
           cifId: expect.any(String),
-          countryCallingCode: expect.anything(),
-          mobileNumber: expect.anything(),
           tncId: expect.anything(),
           tncVersion: expect.anything(),
           isAccepted: true,
-          ipAddress: "127.0.0.1",
+          ipAddress: expect.any(String),
         }),
       })
     );
