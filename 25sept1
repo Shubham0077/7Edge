@@ -1,42 +1,21 @@
-{bidData.map((bid, index) => (
-              <TableRow key={`${bid.quantity}-${index}`}>
-                <TableCell>
-                  <TextField
-                    data-testid={`price-${index}`}
-                    type="number"
-                    inputRef={(el) => (inputRefs.current[`quantity-${index}`] = el)}
-                    value={bid.quantity}
-                    onChange={(e) => handleInputChange(index, 'quantity', e.target.value)}
-                    onBlur={(e) => {
-                      if (e.target.value === '') return;
-                      calculateBlockedAmount(index);
-                    }}
-                    variant="outlined"
-                    size="small"
-                    error={!!bid.quantityError}
-                    helperText={bid.quantityError}
-                  />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    data-testid={`quantity-${index}`}
-                    type="number"
-                    inputProps={{ step: 1 }}
-                    onKeyDown={(e) => {
-                      if (e.key === '.' || e.key === 'E' || e.key === 'e') {
-                        e.preventDefault();
-                      }
-                    }}
-                    inputRef={(el) => (inputRefs.current[`price-${index}`] = el)}
-                    value={bid.price}
-                    onChange={(e) => {
-                      if (e.target.value === '') {
-                        handleInputChange(index, 'price', null);
-                      } else {
-                        handleInputChange(index, 'price', e.target.value);
-                      }
-                    }}
-                    onBlur={(e) => {
-                      if (e.target.value === '') return;
-                      calculateBlockedAmount(index);
-                    }}
+it('should prevent entering ".", "e" or "E" in quantity input', () => {
+  render(<BidTable {...mockProps} />);
+
+  const quantityField = screen.getByTestId('quantity-0');
+  const quantityInput: any = quantityField.querySelector('input');
+
+  // try typing '.'
+  fireEvent.keyDown(quantityInput, { key: '.' });
+  fireEvent.change(quantityInput, { target: { value: '.' } });
+  expect(quantityInput.value).toBe(''); // should stay empty
+
+  // try typing 'e'
+  fireEvent.keyDown(quantityInput, { key: 'e' });
+  fireEvent.change(quantityInput, { target: { value: 'e' } });
+  expect(quantityInput.value).toBe('');
+
+  // try typing 'E'
+  fireEvent.keyDown(quantityInput, { key: 'E' });
+  fireEvent.change(quantityInput, { target: { value: 'E' } });
+  expect(quantityInput.value).toBe('');
+});
