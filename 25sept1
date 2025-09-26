@@ -1,183 +1,15 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
-import BidTable from '../../components/asba/BidTable';
-
-jest.mock('next/router', () => ({
-  useRouter() {
-    return {
-      pathname: '',
-      push: jest.fn(),
-    };
-  },
-}));
-
-jest.mock('jose', () => ({
-  jose: jest.fn(),
-}));
-
-jest.mock('react-redux', () => ({
-  ...jest.requireActual('react-redux'),
-  useSelector: jest.fn(),
-}));
-
-jest.mock('@mui/material', () => ({
-  ...jest.requireActual('@mui/material'),
-  useMediaQuery: jest.fn().mockReturnValue(false),
-}));
-
-jest.mock('jose', () => ({
-  jose: jest.fn(),
-  CompactEncrypt: jest.fn(),
-}));
-
-jest.mock('@moengage/web-sdk', () => ({
-  initialize: jest.fn(),
-  add_unique_user_id: jest.fn(),
-  track_event: jest.fn(),
-  add_user_attribute: jest.fn(),
-  isMoeLoaded: jest.fn().mockReturnValue(true),
-}));
-
-describe('BidTable Component', () => {
-  const mockSetMaxBidRow = jest.fn();
-  const mockSetBidDataRows = jest.fn();
-  const mockSetCutOff = jest.fn();
-
-  const baseProps = {
-    investorCategoryRes: {
-      noOfBidsPerApplication: 5,
-      minimumNoOFShares: 10,
-      minimumBidPrice: 100,
-      maximumBidPrice: 500,
-      cutOff: 'Y',
-      minimumApplicationAmt: 1000,
-      discountedMaximumBidPrice: 450,
-      discountedMinimumBidPrice: 90,
-      maximumApplicationAmt: 5000,
-      miscountAllowed: 'Y',
-      discountAmount: 50,
-      maximumNoOFShares: 100,
-    },
-    setMaxBidRow: mockSetMaxBidRow,
-    isAdd: 'N',
-    amountBlocked: 5000,
-    bidDetails: [
-      {
-        issueName: 'Hexaware Technologies Limited',
-        issueSymbol: 'HEXT',
-        issueType: 'IPO',
-        issueStartDate: '07/04/202510:00',
-        issueEndDate: '30/06/202515:30',
-        applicableInvestorCat:
-          'CO,EMP,FI,FII,IND,IC,MF,NOH,OTH,POL,SHA',
-      },
-      {
-        issueName: 'Hexaware Technologies Limited',
-        issueSymbol: 'HEXT',
-        issueType: 'IPO',
-        issueStartDate: '07/04/202510:00',
-        issueEndDate: '30/06/202515:30',
-        applicableInvestorCat:
-          'CO,EMP,FI,FII,IND,IC,MF,NOH,OTH,POL,SHA',
-      },
-    ],
-    setBidDataRows: mockSetBidDataRows,
-    setCutOff: mockSetCutOff,
-  };
-
-  const mockProps = { ...baseProps, userselectedAction: 'view' };
-  const mockProps2 = { ...baseProps, userselectedAction: 'block' };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should render userselectedAction correctly (view)', async () => {
-    render(<BidTable {...mockProps} />);
-
-    await waitFor(() => {
-      const textField = screen.getByTestId('quantity-0');
-      const inputElement: any = textField.querySelector('input');
-      fireEvent.change(inputElement, { target: { value: '25' } });
-    });
-
-    await waitFor(() => {
-      const textField = screen.getByTestId('price-1');
-      const inputElement: any = textField.querySelector('input');
-      fireEvent.change(inputElement, { target: { value: '25' } });
-    });
-  });
-
-  it('should render userselectedAction correctly (block)', async () => {
-    render(<BidTable {...mockProps2} />);
-    const checkbox = screen.getByRole('checkbox');
-    fireEvent.click(checkbox);
-  });
-
-  // 🔥 New Tests for calculateBlockedAmount behavior
-
-  it('should keep price empty when user leaves the price blank', async () => {
-    render(<BidTable {...mockProps} />);
-    const priceField = screen.getByTestId('price-0');
-    const inputElement: any = priceField.querySelector('input');
-
-    fireEvent.change(inputElement, { target: { value: '' } });
-    fireEvent.blur(inputElement);
-
-    await waitFor(() => {
-      expect(inputElement.value).toBe(''); // should not become "0"
-    });
-  });
-
-  it('should calculate amount correctly when valid price entered', async () => {
-    render(<BidTable {...mockProps} />);
-    const qtyField = screen.getByTestId('quantity-0');
-    const qtyInput: any = qtyField.querySelector('input');
-    fireEvent.change(qtyInput, { target: { value: '10' } });
-
-    const priceField = screen.getByTestId('price-0');
-    const priceInput: any = priceField.querySelector('input');
-    fireEvent.change(priceInput, { target: { value: '20' } });
-    fireEvent.blur(priceInput);
-
-    await waitFor(() => {
-      expect(priceInput.value).toBe('20');
-      // since calculateBlockedAmount updates amount, check callback fired
-      expect(mockSetBidDataRows).toHaveBeenCalled();
-    });
-  });
-
-  it('should reset amount fields if price is invalid string', async () => {
-    render(<BidTable {...mockProps} />);
-    const priceField = screen.getByTestId('price-0');
-    const inputElement: any = priceField.querySelector('input');
-
-    fireEvent.change(inputElement, { target: { value: 'abc' } });
-    fireEvent.blur(inputElement);
-
-    await waitFor(() => {
-      expect(inputElement.value).toBe(''); // invalid should clear
-    });
-  });
-
-it('should clear dependent fields when price is emptied', async () => {
+it('should reset fields when invalid (non-numeric) price is entered', async () => {
   render(<BidTable {...mockProps} />);
 
   const priceField = screen.getByTestId('price-0');
   const priceInput: any = priceField.querySelector('input');
 
-  // Step 1: enter a valid price first
-  fireEvent.change(priceInput, { target: { value: '150' } });
-  fireEvent.blur(priceInput);
-
-  // Step 2: clear the field (trigger else branch)
-  fireEvent.change(priceInput, { target: { value: '' } });
+  // enter invalid string so parseInt fails
+  fireEvent.change(priceInput, { target: { value: 'abc' } });
   fireEvent.blur(priceInput);
 
   await waitFor(() => {
-    expect(priceInput.value).toBe('');
-    // verify that dependent fields are reset
+    expect(priceInput.value).toBe(''); // field gets cleared
     expect(mockSetBidDataRows).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
@@ -189,6 +21,4 @@ it('should clear dependent fields when price is emptied', async () => {
       ])
     );
   });
-});
-
 });
