@@ -1,78 +1,143 @@
-const calculateBlockedAmount = (index: number) => {
-  setBidData((prevBidData) => {
-    const newBidData = [...prevBidData];
-    const quantity = parseInt(newBidData[index].quantity, 10) || 0;
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import BidTable from '../../components/asba/BidTable';
 
-    // if price is empty, skip forcing 0
-    const rawPrice = newBidData[index].price;
-    const price =
-      rawPrice === "" || rawPrice === null || rawPrice === undefined
-        ? null
-        : parseInt(rawPrice, 10);
 
-    if (price !== null && !isNaN(price)) {
-      newBidData[index].price = price.toString();
-      newBidData[index].amount = (quantity * price).toFixed(2);
-      newBidData[index].formattedPrice = price.toFixed(2);
-      newBidData[index].formattedAmount = (quantity * price).toFixed(2);
-    } else {
-      // leave price blank and clear dependent fields
-      newBidData[index].price = "";
-      newBidData[index].amount = "";
-      newBidData[index].formattedPrice = "";
-      newBidData[index].formattedAmount = "";
-    }
-
-    const discount: number = Number(quantity * discountAmount);
-    let minBidAmt: number = minimumApplicationAmt;
-    let maxBidAmt: number = maximumApplicationAmt;
-
-    let amountText = "Application Bid Amount";
-    if (miscountAllowed == "Y") {
-      amountText = "Application Discount Bid Amount";
-      minBidAmt = discountedMinimumBidPrice * minimumNoOFShares;
-      maxBidAmt = discountedMaximumBidPrice * maximumNoOFShares;
-      if (price !== null && !isNaN(price)) {
-        const discountedAmt = String(quantity * price - discount);
-        newBidData[index].discountedAmount = parseFloat(discountedAmt).toFixed(2);
-      } else {
-        newBidData[index].discountedAmount = "";
-      }
-    }
-
-    let maxPriceRow: any = [];
-    let maxAmount: any = "";
-    if (miscountAllowed == "Y") {
-      maxAmount = Math.max(
-        ...newBidData
-          .map((bid: any) => Number(bid.discountedAmount))
-          .filter((val) => !isNaN(val))
-      );
-      maxPriceRow = newBidData.filter(
-        (bid) => Number(bid.discountedAmount) === maxAmount
-      );
-    } else {
-      maxAmount = Math.max(
-        ...newBidData.map((bid: any) => Number(bid.amount)).filter((val) => !isNaN(val))
-      );
-      maxPriceRow = newBidData.filter(
-        (bid) => Number(bid.amount) === maxAmount
-      );
-    }
-
-    if (maxAmount && quantity > 0) {
-      const error = !(maxAmount > 0 && maxAmount >= minBidAmt && maxAmount <= maxBidAmt)
-        ? `${amountText} must be between ₹${minBidAmt} and ₹${maxBidAmt}`
-        : "";
-
-      newBidData[index] = {
-        ...newBidData[index],
-        [`bidAmountError`]: error,
+jest.mock('next/router', () => ({
+    useRouter() {
+      return {
+        pathname: '',
+        push: jest.fn(),
       };
-    }
+    },
+  }));
 
-    setMaxBidAmount(maxAmount);
-    setMaxBiddetailsRow({ ...maxPriceRow[0], maxBidValue: maxAmount?.toFixed(2) });
-    return newBidData;
+jest.mock('jose', () => ({
+    jose: jest.fn(),
+  }));
+
+  jest.mock('react-redux', () => ({
+    ...jest.requireActual('react-redux'),
+    useSelector: jest.fn(),
+  }));
+  
+  jest.mock('@mui/material', () => ({
+    ...jest.requireActual('@mui/material'),
+    useMediaQuery: jest.fn().mockReturnValue(false),
+  }));
+  
+  jest.mock('jose', () => ({
+    jose: jest.fn(),
+    CompactEncrypt: jest.fn(),
+  }));
+  
+  jest.mock('@moengage/web-sdk', () => ({
+    initialize: jest.fn(),
+    add_unique_user_id: jest.fn(),
+    track_event: jest.fn(),
+    add_user_attribute: jest.fn(),
+    isMoeLoaded: jest.fn().mockReturnValue(true),
+  }));
+
+describe('BidTable Component', () => {
+  const mockSetMaxBidRow = jest.fn();
+  const mockSetBidDataRows = jest.fn();
+  const mockSetCutOff = jest.fn();
+
+  const mockProps = {
+    investorCategoryRes: { 
+      noOfBidsPerApplication: 5,
+      minimumNoOFShares: 10,
+      minimumBidPrice: 100,
+      maximumBidPrice: 500,
+      cutOff: 'Y',
+      minimumApplicationAmt: 1000,
+      discountedMaximumBidPrice: 450,
+      discountedMinimumBidPrice: 90,
+      maximumApplicationAmt: 5000,
+      miscountAllowed: 'Y',
+      discountAmount: 50,
+      maximumNoOFShares: 100,
+     },
+    setMaxBidRow: mockSetMaxBidRow,
+    isAdd: 'N',
+    amountBlocked: 5000,
+    bidDetails: [
+      {issueName:"Hexaware Technologies Limited",issueSymbol:"HEXT",issueType:"IPO",issueStartDate:"07/04/202510:00",issueEndDate:"30/06/202515:30",applicableInvestorCat:"CO,EMP,FI,FII,IND,IC,MF,NOH,OTH,POL,SHA"},{issueName:"Hexaware Technologies Limited",issueSymbol:"HEXT",issueType:"IPO",issueStartDate:"07/04/202510:00",issueEndDate:"30/06/202515:30",applicableInvestorCat:"CO,EMP,FI,FII,IND,IC,MF,NOH,OTH,POL,SHA"}
+    ],
+    setBidDataRows: mockSetBidDataRows,
+    setCutOff: mockSetCutOff,
+    userselectedAction: 'view',
+  };
+
+  const mockProps2 = {
+    investorCategoryRes: { 
+      noOfBidsPerApplication: 5,
+      minimumNoOFShares: 10,
+      minimumBidPrice: 100,
+      maximumBidPrice: 500,
+      cutOff: 'Y',
+      minimumApplicationAmt: 1000,
+      discountedMaximumBidPrice: 450,
+      discountedMinimumBidPrice: 90,
+      maximumApplicationAmt: 5000,
+      miscountAllowed: 'Y',
+      discountAmount: 50,
+      maximumNoOFShares: 100,
+     },
+    setMaxBidRow: mockSetMaxBidRow,
+    isAdd: 'N',
+    amountBlocked: 5000,
+    bidDetails: [
+      {issueName:"Hexaware Technologies Limited",issueSymbol:"HEXT",issueType:"IPO",issueStartDate:"07/04/202510:00",issueEndDate:"30/06/202515:30",applicableInvestorCat:"CO,EMP,FI,FII,IND,IC,MF,NOH,OTH,POL,SHA"},{issueName:"Hexaware Technologies Limited",issueSymbol:"HEXT",issueType:"IPO",issueStartDate:"07/04/202510:00",issueEndDate:"30/06/202515:30",applicableInvestorCat:"CO,EMP,FI,FII,IND,IC,MF,NOH,OTH,POL,SHA"}
+    ],
+    setBidDataRows: mockSetBidDataRows,
+    setCutOff: mockSetCutOff,
+    userselectedAction: 'block',
+  };
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
-};
+
+ 
+
+  it('should render userselectedAction correctly', async () => {
+    render(<BidTable {...mockProps} />);
+
+    await waitFor(() => {
+      const textField = screen.getByTestId('quantity-0');
+
+      // Simulate the onChange event
+      const inputElement :any = textField.querySelector('input');
+
+      fireEvent.change(inputElement, { target: { value: '25' } });
+
+    })
+
+    await waitFor(() => {
+      const textField = screen.getByTestId('price-1');
+
+      // Simulate the onChange event
+      const inputElement :any = textField.querySelector('input');
+
+      fireEvent.change(inputElement, { target: { value: '25' } });
+
+    })
+  
+  });
+
+  it('should render userselectedAction correctly', async () => {
+    render(<BidTable {...mockProps2} />);
+    // Find the checkbox
+    const checkbox = screen.getByRole('checkbox');
+
+    // Simulate the onChange event
+    fireEvent.click(checkbox);
+ 
+  
+  });
+
+
+
+});
