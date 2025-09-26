@@ -1,6 +1,0 @@
-jest.mock('../../components/common-components/MuiTextField', () => (props: any) => (
-  <div>
-    <input role="spinbutton" value={props.value} onChange={props.onChange} aria-invalid="true" />
-    {props.errorText && <span>{props.errorText}</span>}
-  </div>
-));
