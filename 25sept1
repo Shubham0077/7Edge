@@ -1,18 +1,42 @@
-it('should block typing e or E in price input', () => {
-  render(<BidTable {...mockProps} />);
-
-  const priceField = screen.getByTestId('price-0');
-  const priceInput: any = priceField.querySelector('input');
-
-  // Try typing 'e'
-  fireEvent.keyDown(priceInput, { key: 'e', code: 'KeyE', charCode: 69 });
-  fireEvent.change(priceInput, { target: { value: 'e' } });
-
-  expect(priceInput.value).toBe(''); // should remain empty
-
-  // Try typing 'E'
-  fireEvent.keyDown(priceInput, { key: 'E', code: 'KeyE', charCode: 69 });
-  fireEvent.change(priceInput, { target: { value: 'E' } });
-
-  expect(priceInput.value).toBe(''); // should remain empty
-});
+{bidData.map((bid, index) => (
+              <TableRow key={`${bid.quantity}-${index}`}>
+                <TableCell>
+                  <TextField
+                    data-testid={`price-${index}`}
+                    type="number"
+                    inputRef={(el) => (inputRefs.current[`quantity-${index}`] = el)}
+                    value={bid.quantity}
+                    onChange={(e) => handleInputChange(index, 'quantity', e.target.value)}
+                    onBlur={(e) => {
+                      if (e.target.value === '') return;
+                      calculateBlockedAmount(index);
+                    }}
+                    variant="outlined"
+                    size="small"
+                    error={!!bid.quantityError}
+                    helperText={bid.quantityError}
+                  />
+                </TableCell>
+                <TableCell>
+                  <TextField
+                    data-testid={`quantity-${index}`}
+                    type="number"
+                    inputProps={{ step: 1 }}
+                    onKeyDown={(e) => {
+                      if (e.key === '.' || e.key === 'E' || e.key === 'e') {
+                        e.preventDefault();
+                      }
+                    }}
+                    inputRef={(el) => (inputRefs.current[`price-${index}`] = el)}
+                    value={bid.price}
+                    onChange={(e) => {
+                      if (e.target.value === '') {
+                        handleInputChange(index, 'price', null);
+                      } else {
+                        handleInputChange(index, 'price', e.target.value);
+                      }
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value === '') return;
+                      calculateBlockedAmount(index);
+                    }}
