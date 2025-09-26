@@ -160,4 +160,35 @@ describe('BidTable Component', () => {
       expect(inputElement.value).toBe(''); // invalid should clear
     });
   });
+
+it('should clear dependent fields when price is emptied', async () => {
+  render(<BidTable {...mockProps} />);
+
+  const priceField = screen.getByTestId('price-0');
+  const priceInput: any = priceField.querySelector('input');
+
+  // Step 1: enter a valid price first
+  fireEvent.change(priceInput, { target: { value: '150' } });
+  fireEvent.blur(priceInput);
+
+  // Step 2: clear the field (trigger else branch)
+  fireEvent.change(priceInput, { target: { value: '' } });
+  fireEvent.blur(priceInput);
+
+  await waitFor(() => {
+    expect(priceInput.value).toBe('');
+    // verify that dependent fields are reset
+    expect(mockSetBidDataRows).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          price: '',
+          amount: '',
+          formattedPrice: '',
+          formattedAmount: '',
+        }),
+      ])
+    );
+  });
+});
+
 });
