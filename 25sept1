@@ -4,15 +4,15 @@ it('should prevent entering e or E in price input', async () => {
   const priceField = screen.getByTestId('price-0');
   const priceInput: any = priceField.querySelector('input');
 
-  const preventDefault = jest.fn();
+  // lowercase 'e'
+  let event = new KeyboardEvent('keydown', { key: 'e' });
+  Object.defineProperty(event, 'preventDefault', { value: jest.fn() });
+  priceInput.dispatchEvent(event);
+  expect(event.preventDefault).toHaveBeenCalled();
 
-  // simulate lowercase 'e'
-  fireEvent.keyDown(priceInput, { key: 'e', preventDefault });
-  expect(preventDefault).toHaveBeenCalled();
-
-  preventDefault.mockClear();
-
-  // simulate uppercase 'E'
-  fireEvent.keyDown(priceInput, { key: 'E', preventDefault });
-  expect(preventDefault).toHaveBeenCalled();
+  // uppercase 'E'
+  event = new KeyboardEvent('keydown', { key: 'E' });
+  Object.defineProperty(event, 'preventDefault', { value: jest.fn() });
+  priceInput.dispatchEvent(event);
+  expect(event.preventDefault).toHaveBeenCalled();
 });
