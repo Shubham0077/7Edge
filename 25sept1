@@ -1,24 +1,18 @@
-it('should reset fields when invalid (non-numeric) price is entered', async () => {
+it('should prevent entering e or E in price input', async () => {
   render(<BidTable {...mockProps} />);
 
   const priceField = screen.getByTestId('price-0');
   const priceInput: any = priceField.querySelector('input');
 
-  // enter invalid string so parseInt fails
-  fireEvent.change(priceInput, { target: { value: 'abc' } });
-  fireEvent.blur(priceInput);
+  const preventDefault = jest.fn();
 
-  await waitFor(() => {
-    expect(priceInput.value).toBe(''); // field gets cleared
-    expect(mockSetBidDataRows).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          price: '',
-          amount: '',
-          formattedPrice: '',
-          formattedAmount: '',
-        }),
-      ])
-    );
-  });
+  // simulate lowercase 'e'
+  fireEvent.keyDown(priceInput, { key: 'e', preventDefault });
+  expect(preventDefault).toHaveBeenCalled();
+
+  preventDefault.mockClear();
+
+  // simulate uppercase 'E'
+  fireEvent.keyDown(priceInput, { key: 'E', preventDefault });
+  expect(preventDefault).toHaveBeenCalled();
 });
