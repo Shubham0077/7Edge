@@ -1,0 +1,48 @@
+// utils/fetchBeneficiary.ts
+export const handleFetchBeneficiary = async (
+  dispatch: any,
+  getBeneDetails: any,
+  body: any,
+  setStateFns: {
+    setBeneficiaryLoader: (v: boolean) => void,
+    setBeneDetailsFound: (v: boolean) => void,
+    setBeneDetailsName: (name: string) => void,
+    setErrorScreen: (v: boolean) => void,
+    setBeneficiaryErrorCode: (code: string) => void,
+    setBeneficiaryErrorMessage: (msg: string) => void
+  }
+) => {
+  const { setBeneficiaryLoader, setBeneDetailsFound, setBeneDetailsName, setErrorScreen, setBeneficiaryErrorCode, setBeneficiaryErrorMessage } = setStateFns;
+
+  setBeneficiaryLoader(true);
+  const result = await fetchBeneDetails(dispatch, getBeneDetails, body);
+
+  if (result?.payload?.returnCode === '200') {
+    setBeneDetailsFound(true);
+    setBeneDetailsName(result?.payload?.data?.beneficiaryName);
+    setBeneficiaryLoader(false);
+  } else if (['M1', 'MT'].includes(result?.payload?.returnCode) || result?.payload?.returnCode === '500') {
+    setErrorScreen(true);
+    setBeneficiaryLoader(false);
+    setBeneficiaryErrorCode(result?.payload?.returnCode);
+    setBeneficiaryErrorMessage(result?.payload?.message);
+  } else {
+    setBeneficiaryLoader(false);
+  }
+};
+
+
+
+
+import { handleFetchBeneficiary } from '@/utils/fetchBeneficiary';
+
+const handleFetchBene = () => {
+  handleFetchBeneficiary(dispatch, getBeneDetails, body, {
+    setBeneficiaryLoader,
+    setBeneDetailsFound,
+    setBeneDetailsName,
+    setErrorScreen,
+    setBeneficiaryErrorCode,
+    setBeneficiaryErrorMessage
+  });
+};
