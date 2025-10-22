@@ -1,0 +1,42 @@
+import React, { useState } from "react";
+import { Box, TextField, Autocomplete, InputAdornment } from "@mui/material";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+
+const countries = [
+  { code: "+91", label: "India" },
+  { code: "+971", label: "UAE" },
+  { code: "+1", label: "USA" },
+  { code: "+44", label: "UK" },
+  { code: "+61", label: "Australia" },
+];
+
+export default function MobileInput() {
+  const [country, setCountry] = useState(countries[1]); // default +971
+  const [mobile, setMobile] = useState("");
+
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: 350 }}>
+      {/* Country Code Dropdown */}
+      <Autocomplete
+        options={countries}
+        getOptionLabel={(option) => `${option.code} (${option.label})`}
+        value={country}
+        onChange={(event, newValue) => setCountry(newValue)}
+        popupIcon={<ArrowDropDownIcon />}
+        sx={{ width: 120 }}
+        renderInput={(params) => (
+          <TextField {...params} variant="outlined" label="" />
+        )}
+      />
+
+      {/* Mobile Number Field */}
+      <TextField
+        placeholder="Enter mobile number"
+        value={mobile}
+        onChange={(e) => setMobile(e.target.value)}
+        inputProps={{ maxLength: 10 }}
+        sx={{ flex: 1 }}
+      />
+    </Box>
+  );
+}
