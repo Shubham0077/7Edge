@@ -1,120 +1,83 @@
-import React, { useState } from "react";
-import { Box, TextField, Autocomplete } from "@mui/material";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import "./MobileInput.css";
+import React, { useState } from 'react';
+import { Box, TextField, Autocomplete, Grid, Select, InputAdornment } from '@mui/material';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import qtStyle from '../styles/paymentQuickTransfer/quickTransfer.module.css';
+import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 
 const countries = [
-  { code: "+91", label: "India" },
-  { code: "+971", label: "UAE" },
-  { code: "+1", label: "USA" },
-  { code: "+44", label: "UK" },
-  { code: "+61", label: "Australia" },
+  { code: '+91', label: 'India' },
+  { code: '+971', label: 'UAE' },
+  { code: '+1', label: 'USA' },
+  { code: '+44', label: 'UK' },
+  { code: '+61', label: 'Australia' },
 ];
 
-export default function MobileInput() {
+export default function SearchDropDown() {
   const [country, setCountry] = useState(countries[1]);
-  const [mobile, setMobile] = useState("");
+  const [mobile, setMobile] = useState('');
 
   return (
-    <Box className="mobile-container">
-      <label className="mobile-label">Mobile Number</label>
-
-      <div className="mobile-box">
-        {/* Country Code Dropdown */}
-        <Autocomplete
-          className="country-dropdown"
-          options={countries}
-          getOptionLabel={(option) => option.code}
-          value={country}
-          onChange={(event, newValue) => setCountry(newValue)}
-          popupIcon={<ArrowDropDownIcon />}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              placeholder="+Code"
-              variant="outlined"
-              className="country-input"
-            />
-          )}
-        />
-
-        {/* Divider line between code and number */}
-        <div className="divider-line"></div>
-
-        {/* Mobile Number Input */}
+    <Grid>
+      <Select
+        //disabled={isNrFlow ? LoginConstants?.FALSE : LoginConstants?.TRUE}
+        //sx={err || relationshipErr ? dropdownLoginPhoneErrStyles : dropdownLoginPhoneStyles}
+        className={qtStyle.Auth_RegisterMobile_MobileInputCountryCode}
+        labelId="demo-simple-select-label"
+        id="Auth_RegisterMobile_Demo_Simple_Select"
+        value={country.code}
+        data-testid="countrycodevalue"
+        defaultValue={countries[0].code}
+        //onChange={handleSelectChange}
+      >
         <TextField
-          placeholder="Enter mobile number"
-          value={mobile}
-          onChange={(e) => setMobile(e.target.value)}
-          variant="outlined"
-          className="mobile-input"
-          inputProps={{ maxLength: 10 }}
-        />
-      </div>
-    </Box>
+          inputProps={{
+            'data-testid': 'search-input',
+          }}
+          placeholder="sbhjb"
+          //onChange={handleSearch}
+          className={qtStyle.Auth_RegisterMobile_SearchInputBox}
+          autoComplete="off"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchOutlinedIcon />
+              </InputAdornment>
+            ),
+          }}
+        ></TextField>
+        {/* {countrySearchList?.map((el: { countryName: string; countryCode: string }) => (
+          <MenuItem
+            key={el.countryName}
+            value={el.countryCode}
+            className={styles.Auth_RegisterMobile_MenuItem}
+          >
+            <Grid className={styles.Auth_RegisterMobile_SelectGrid}>
+              <Typography className={styles.Auth_RegisterMobile_SelectText}>
+                {el.countryCode}
+              </Typography>
+              <Typography className={styles.Auth_RegisterMobile_SelectText}>
+                {el.countryName}
+              </Typography>
+            </Grid>
+          </MenuItem>
+        ))} */}
+      </Select>
+      <TextField
+        className={qtStyle.Auth_RegisterMobile_MuiPhoneInput}
+        //onChange={handlePhoneNumberChange}
+        onKeyDown={(evt) => (evt.key === 'e' || evt.key === 'E') && evt.preventDefault()}
+        type="number"
+        value="86688778"
+        autoComplete="off"
+        // inputProps={{
+        //   maxLength: numericConstants.ten,
+        //   pattern: phoneNumberRegex,
+        //   'data-testid': 'Phone-Number',
+        //   ...PASSWORD_MANAGER_DISABLE_ATTRIBUTES,
+        // }}
+        variant="outlined"
+        //sx={err || relationshipErr ? textFieldLoginPhoneErrStyles : textFieldLoginPhoneStyles}
+      />
+    </Grid>
   );
-}
-
-
-
-
-
-
-.mobile-container {
-  display: flex;
-  flex-direction: column;
-  width: 350px;
-}
-
-.mobile-label {
-  font-size: 14px;
-  color: #555;
-  margin-bottom: 6px;
-}
-
-.mobile-box {
-  display: flex;
-  align-items: center;
-  border: 1px solid #bdbdbd;
-  border-radius: 6px;
-  overflow: hidden;
-  height: 56px;
-  transition: border-color 0.2s;
-  background-color: #fff;
-}
-
-.mobile-box:focus-within {
-  border-color: #1976d2; /* MUI primary blue */
-}
-
-.country-dropdown {
-  width: 110px;
-  flex-shrink: 0;
-}
-
-.country-input .MuiOutlinedInput-root fieldset {
-  border: none;
-}
-
-.country-input input {
-  padding: 14px;
-}
-
-.divider-line {
-  width: 1px;
-  height: 70%;
-  background-color: #bdbdbd;
-  margin: 0 4px;
-}
-
-.mobile-input {
-  flex: 1;
-}
-
-.mobile-input .MuiOutlinedInput-root fieldset {
-  border: none;
-}
-
-.mobile-input input {
-  padding: 14px;
 }
