@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Box, TextField, Autocomplete, InputAdornment } from "@mui/material";
+import { Box, TextField, Autocomplete } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import "./MobileInput.css";
 
 const countries = [
   { code: "+91", label: "India" },
@@ -11,32 +12,109 @@ const countries = [
 ];
 
 export default function MobileInput() {
-  const [country, setCountry] = useState(countries[1]); // default +971
+  const [country, setCountry] = useState(countries[1]);
   const [mobile, setMobile] = useState("");
 
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: 350 }}>
-      {/* Country Code Dropdown */}
-      <Autocomplete
-        options={countries}
-        getOptionLabel={(option) => `${option.code} (${option.label})`}
-        value={country}
-        onChange={(event, newValue) => setCountry(newValue)}
-        popupIcon={<ArrowDropDownIcon />}
-        sx={{ width: 120 }}
-        renderInput={(params) => (
-          <TextField {...params} variant="outlined" label="" />
-        )}
-      />
+    <Box className="mobile-container">
+      <label className="mobile-label">Mobile Number</label>
 
-      {/* Mobile Number Field */}
-      <TextField
-        placeholder="Enter mobile number"
-        value={mobile}
-        onChange={(e) => setMobile(e.target.value)}
-        inputProps={{ maxLength: 10 }}
-        sx={{ flex: 1 }}
-      />
+      <div className="mobile-box">
+        {/* Country Code Dropdown */}
+        <Autocomplete
+          className="country-dropdown"
+          options={countries}
+          getOptionLabel={(option) => option.code}
+          value={country}
+          onChange={(event, newValue) => setCountry(newValue)}
+          popupIcon={<ArrowDropDownIcon />}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              placeholder="+Code"
+              variant="outlined"
+              className="country-input"
+            />
+          )}
+        />
+
+        {/* Divider line between code and number */}
+        <div className="divider-line"></div>
+
+        {/* Mobile Number Input */}
+        <TextField
+          placeholder="Enter mobile number"
+          value={mobile}
+          onChange={(e) => setMobile(e.target.value)}
+          variant="outlined"
+          className="mobile-input"
+          inputProps={{ maxLength: 10 }}
+        />
+      </div>
     </Box>
   );
+}
+
+
+
+
+
+
+.mobile-container {
+  display: flex;
+  flex-direction: column;
+  width: 350px;
+}
+
+.mobile-label {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+.mobile-box {
+  display: flex;
+  align-items: center;
+  border: 1px solid #bdbdbd;
+  border-radius: 6px;
+  overflow: hidden;
+  height: 56px;
+  transition: border-color 0.2s;
+  background-color: #fff;
+}
+
+.mobile-box:focus-within {
+  border-color: #1976d2; /* MUI primary blue */
+}
+
+.country-dropdown {
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.country-input .MuiOutlinedInput-root fieldset {
+  border: none;
+}
+
+.country-input input {
+  padding: 14px;
+}
+
+.divider-line {
+  width: 1px;
+  height: 70%;
+  background-color: #bdbdbd;
+  margin: 0 4px;
+}
+
+.mobile-input {
+  flex: 1;
+}
+
+.mobile-input .MuiOutlinedInput-root fieldset {
+  border: none;
+}
+
+.mobile-input input {
+  padding: 14px;
 }
