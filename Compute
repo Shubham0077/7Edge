@@ -1,92 +1,23 @@
-const calculateBlockedAmount = (index: number) => {
-  setBidData((prevBidData) => {
-    const newBidData = [...prevBidData];
-    const quantity = parseFloat(newBidData[index].quantity) || 0;
-    const rawPrice = newBidData[index].price;
-
-    // --- Handle empty or cleared price field ---
-    if (rawPrice === '' || rawPrice === null || rawPrice === undefined) {
-      newBidData[index].price = '';
-      newBidData[index].amount = '';
-      newBidData[index].formattedPrice = '';
-      newBidData[index].formattedAmount = '';
-      newBidData[index].discountedAmount = '';
+const nowPaymentCheck = () => {
+    // const safeIsSIMPS = typeof isSIMPS !== 'undefined' ? isSIMPS : false;
+    const safeIsSIMPS: boolean =
+      typeof (globalThis as any).isSIMPS !== 'undefined' ? (globalThis as any).isSIMPS : false;
+    if (
+      transferType == ManagePayeeConstants.EXTERNAL &&
+      paymentMethod != '' &&
+      paymentTime != '' &&
+      formattedAmount != '' &&
+      (!safeIsSIMPS ? !amountErr : remarks !== '' && !amountErr && !remarksErr)
+    ) {
+      setButtonDisabled(false);
+    } else if (
+      transferType == ManagePayeeConstants.INTERNAL &&
+      paymentTime != '' &&
+      formattedAmount != '' &&
+      (!safeIsSIMPS ? !amountErr : remarks !== '' && !amountErr && !remarksErr)
+    ) {
+      setButtonDisabled(false);
     } else {
-      // --- Convert price to decimal ---
-      const price = parseFloat(rawPrice);
-
-      if (!isNaN(price)) {
-        newBidData[index].price = price.toString();
-        newBidData[index].amount = (quantity * price).toFixed(2);
-        newBidData[index].formattedPrice = price.toFixed(2);
-        newBidData[index].formattedAmount = (quantity * price).toFixed(2);
-      } else {
-        // Invalid number entered
-        newBidData[index].price = '';
-        newBidData[index].amount = '';
-        newBidData[index].formattedPrice = '';
-        newBidData[index].formattedAmount = '';
-        newBidData[index].discountedAmount = '';
-      }
+      setButtonDisabled(true);
     }
-
-    // --- Handle discount logic ---
-    const discount: number = Number(quantity * discountAmount);
-    let minBidAmt: number = minimumApplicationAmt;
-    let maxBidAmt: number = maximumApplicationAmt;
-
-    let amountText = 'Application Bid Amount';
-    if (miscountAllowed == 'Y') {
-      amountText = 'Application Discount Bid Amount';
-      minBidAmt = discountedMinimumBidPrice * minimumNoOFShares;
-      maxBidAmt = discountedMaximumBidPrice * maximumNoOFShares;
-
-      const price = parseFloat(newBidData[index].price);
-      if (!isNaN(price)) {
-        const discountedAmt = quantity * price - discount;
-        newBidData[index].discountedAmount = discountedAmt.toFixed(2);
-      } else {
-        newBidData[index].discountedAmount = '';
-      }
-    }
-
-    // --- Find max bid row ---
-    let maxPriceRow: any = [];
-    let maxAmount: any = '';
-    if (miscountAllowed == 'Y') {
-      maxAmount = Math.max(
-        ...newBidData
-          .map((bid: any) => Number(bid.discountedAmount))
-          .filter((val) => !isNaN(val))
-      );
-      maxPriceRow = newBidData.filter((bid) => Number(bid.discountedAmount) === maxAmount);
-    } else {
-      maxAmount = Math.max(
-        ...newBidData.map((bid: any) => Number(bid.amount)).filter((val) => !isNaN(val))
-      );
-      maxPriceRow = newBidData.filter((bid) => Number(bid.amount) === maxAmount);
-    }
-
-    // --- Validation check ---
-    if (maxAmount && quantity > 0) {
-      const error =
-        !(maxAmount > 0 && maxAmount >= minBidAmt && maxAmount <= maxBidAmt)
-          ? `${amountText} must be between ₹${minBidAmt} and ₹${maxBidAmt}`
-          : '';
-
-      newBidData[index] = {
-        ...newBidData[index],
-        bidAmountError: error,
-      };
-    }
-
-    // --- Update final states ---
-    setMaxBidAmount(maxAmount);
-    setMaxBiddetailsRow({
-      ...maxPriceRow[0],
-      maxBidValue: maxAmount?.toFixed(2),
-    });
-
-    return newBidData;
-  });
-};
+  };
