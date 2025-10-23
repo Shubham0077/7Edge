@@ -1,83 +1,74 @@
-import React, { useState } from 'react';
-import { Box, TextField, Autocomplete, Grid, Select, InputAdornment } from '@mui/material';
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import qtStyle from '../styles/paymentQuickTransfer/quickTransfer.module.css';
-import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
+const calculateBlockedAmount = (index: number) => {
+    setBidData((prevBidData) => {
+      const newBidData = [...prevBidData];
+      const quantity = parseInt(newBidData[index].quantity, 10) || 0;
 
-const countries = [
-  { code: '+91', label: 'India' },
-  { code: '+971', label: 'UAE' },
-  { code: '+1', label: 'USA' },
-  { code: '+44', label: 'UK' },
-  { code: '+61', label: 'Australia' },
-];
+      // if price is empty, skip forcing 0
+      const rawPrice = newBidData[index].price;
+      const price =
+        rawPrice === '' || rawPrice === null || rawPrice === undefined
+          ? null
+          : parseInt(rawPrice, 10);
 
-export default function SearchDropDown() {
-  const [country, setCountry] = useState(countries[1]);
-  const [mobile, setMobile] = useState('');
+      if (price !== null && !isNaN(price)) {
+        newBidData[index].price = price.toString();
+        newBidData[index].amount = (quantity * price).toFixed(2);
+        newBidData[index].formattedPrice = price.toFixed(2);
+        newBidData[index].formattedAmount = (quantity * price).toFixed(2);
+      } else {
+        // leave price blank and clear dependent fields
+        newBidData[index].price = '';
+        newBidData[index].amount = '';
+        newBidData[index].formattedPrice = '';
+        newBidData[index].formattedAmount = '';
+      }
 
-  return (
-    <Grid>
-      <Select
-        //disabled={isNrFlow ? LoginConstants?.FALSE : LoginConstants?.TRUE}
-        //sx={err || relationshipErr ? dropdownLoginPhoneErrStyles : dropdownLoginPhoneStyles}
-        className={qtStyle.Auth_RegisterMobile_MobileInputCountryCode}
-        labelId="demo-simple-select-label"
-        id="Auth_RegisterMobile_Demo_Simple_Select"
-        value={country.code}
-        data-testid="countrycodevalue"
-        defaultValue={countries[0].code}
-        //onChange={handleSelectChange}
-      >
-        <TextField
-          inputProps={{
-            'data-testid': 'search-input',
-          }}
-          placeholder="sbhjb"
-          //onChange={handleSearch}
-          className={qtStyle.Auth_RegisterMobile_SearchInputBox}
-          autoComplete="off"
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchOutlinedIcon />
-              </InputAdornment>
-            ),
-          }}
-        ></TextField>
-        {/* {countrySearchList?.map((el: { countryName: string; countryCode: string }) => (
-          <MenuItem
-            key={el.countryName}
-            value={el.countryCode}
-            className={styles.Auth_RegisterMobile_MenuItem}
-          >
-            <Grid className={styles.Auth_RegisterMobile_SelectGrid}>
-              <Typography className={styles.Auth_RegisterMobile_SelectText}>
-                {el.countryCode}
-              </Typography>
-              <Typography className={styles.Auth_RegisterMobile_SelectText}>
-                {el.countryName}
-              </Typography>
-            </Grid>
-          </MenuItem>
-        ))} */}
-      </Select>
-      <TextField
-        className={qtStyle.Auth_RegisterMobile_MuiPhoneInput}
-        //onChange={handlePhoneNumberChange}
-        onKeyDown={(evt) => (evt.key === 'e' || evt.key === 'E') && evt.preventDefault()}
-        type="number"
-        value="86688778"
-        autoComplete="off"
-        // inputProps={{
-        //   maxLength: numericConstants.ten,
-        //   pattern: phoneNumberRegex,
-        //   'data-testid': 'Phone-Number',
-        //   ...PASSWORD_MANAGER_DISABLE_ATTRIBUTES,
-        // }}
-        variant="outlined"
-        //sx={err || relationshipErr ? textFieldLoginPhoneErrStyles : textFieldLoginPhoneStyles}
-      />
-    </Grid>
-  );
-}
+      const discount: number = Number(quantity * discountAmount);
+      let minBidAmt: number = minimumApplicationAmt;
+      let maxBidAmt: number = maximumApplicationAmt;
+
+      let amountText = 'Application Bid Amount';
+      if (miscountAllowed == 'Y') {
+        amountText = 'Application Discount Bid Amount';
+        minBidAmt = discountedMinimumBidPrice * minimumNoOFShares;
+        maxBidAmt = discountedMaximumBidPrice * maximumNoOFShares;
+        if (price !== null && !isNaN(price)) {
+          const discountedAmt = String(quantity * price - discount);
+          newBidData[index].discountedAmount = parseFloat(discountedAmt).toFixed(2);
+        } else {
+          newBidData[index].discountedAmount = '';
+        }
+      }
+
+      let maxPriceRow: any = [];
+      let maxAmount: any = '';
+      if (miscountAllowed == 'Y') {
+        maxAmount = Math.max(
+          ...newBidData
+            .map((bid: any) => Number(bid.discountedAmount))
+            .filter((val) => !isNaN(val)),
+        );
+        maxPriceRow = newBidData.filter((bid) => Number(bid.discountedAmount) === maxAmount);
+      } else {
+        maxAmount = Math.max(
+          ...newBidData.map((bid: any) => Number(bid.amount)).filter((val) => !isNaN(val)),
+        );
+        maxPriceRow = newBidData.filter((bid) => Number(bid.amount) === maxAmount);
+      }
+
+      if (maxAmount && quantity > 0) {
+        const error = !(maxAmount > 0 && maxAmount >= minBidAmt && maxAmount <= maxBidAmt)
+          ? `${amountText} must be between ₹${minBidAmt} and ₹${maxBidAmt}`
+          : '';
+
+        newBidData[index] = {
+          ...newBidData[index],
+          [`bidAmountError`]: error,
+        };
+      }
+
+      setMaxBidAmount(maxAmount);
+      setMaxBiddetailsRow({ ...maxPriceRow[0], maxBidValue: maxAmount?.toFixed(2) });
+      return newBidData;
+    });
+  };
